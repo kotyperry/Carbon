@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  canban:
+    build: .
+    container_name: canban
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist board data outside the container
+      - canban-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/data"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  canban-data:
+    driver: local

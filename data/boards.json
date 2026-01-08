@@ -1,0 +1,120 @@
+{
+  "boards": [
+    {
+      "id": "22826da6-3276-48cb-a213-a469282bfe97",
+      "name": "Idea Ranch",
+      "columns": [
+        {
+          "id": "9790308f-2128-4c2f-8d49-252d1f72387e",
+          "title": "To Do",
+          "cards": [
+            {
+              "id": "1120789a-305e-41e7-a91e-c7a33beefa69",
+              "title": "Dan Rooney",
+              "description": "",
+              "labels": ["bug", "idea"],
+              "priority": "medium",
+              "checklist": [],
+              "createdAt": "2026-01-08T18:33:52.779Z"
+            }
+          ]
+        },
+        {
+          "id": "dea9372f-749b-4626-9c74-de9e67c2e2f4",
+          "title": "In Progress",
+          "cards": []
+        },
+        {
+          "id": "0b6b5089-28b5-4ea5-a2f5-4b50131a56ac",
+          "title": "Done",
+          "cards": []
+        }
+      ],
+      "archivedCards": []
+    },
+    {
+      "id": "f50061e6-cadf-4bdf-b84b-515cdcc153aa",
+      "name": "Personal Projects",
+      "columns": [
+        {
+          "id": "86e34fb1-8eb9-41be-9745-0eece29eacfd",
+          "title": "To Do",
+          "cards": [
+            {
+              "id": "d8953102-3c31-4551-a763-4cd37a657359",
+              "title": "DAM Software",
+              "description": "Dam software buildout",
+              "labels": ["feature", "idea"],
+              "priority": null,
+              "checklist": [
+                {
+                  "id": "625e8948-5e44-47bd-8fa4-839d2e8cbd50",
+                  "text": "Fix downloads",
+                  "completed": false
+                },
+                {
+                  "id": "0732a4ef-2785-4811-8706-f59630092c58",
+                  "text": "Adjust download links to a single type and allow full customization",
+                  "completed": false
+                }
+              ],
+              "createdAt": "2026-01-08T18:36:43.950Z"
+            }
+          ]
+        },
+        {
+          "id": "84bca8b0-66b8-4534-8b84-78e20254b682",
+          "title": "In Progress",
+          "cards": []
+        },
+        {
+          "id": "27694c3f-2616-4db0-8893-74c30ec43f43",
+          "title": "Done",
+          "cards": []
+        }
+      ],
+      "archivedCards": []
+    }
+  ],
+  "activeBoard": "f50061e6-cadf-4bdf-b84b-515cdcc153aa",
+  "theme": "dark",
+  "bookmarks": [
+    {
+      "id": "f01907fd-e254-4afa-a71d-1c46c81aed89",
+      "title": "X",
+      "url": "https://x.com",
+      "description": "",
+      "favicon": null,
+      "image": null,
+      "tags": ["design-inspiration"],
+      "collectionId": null,
+      "isFavorite": false,
+      "isArchived": false,
+      "createdAt": "2026-01-08T20:51:53.404Z"
+    }
+  ],
+  "collections": [
+    {
+      "id": "all",
+      "name": "All Bookmarks",
+      "icon": "bookmark"
+    },
+    {
+      "id": "favorites",
+      "name": "Favorites",
+      "icon": "star"
+    },
+    {
+      "id": "archive",
+      "name": "Archive",
+      "icon": "archive"
+    }
+  ],
+  "customTags": {
+    "design-inspiration": {
+      "name": "Design Inspiration",
+      "color": "bg-pink-500"
+    }
+  },
+  "activeView": "bookmarks"
+}

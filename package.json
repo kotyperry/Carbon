@@ -1,0 +1,16 @@
+{
+  "name": "canban",
+  "version": "1.0.0",
+  "description": "A local Kanban board application for project management",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "client": "cd client && npm run dev",
+    "server": "cd server && npm run dev",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "tauri:dev": "cd client && npm run tauri:dev",
+    "tauri:build": "cd client && npm run tauri:build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
