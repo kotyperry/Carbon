@@ -59,7 +59,7 @@ jobs:
           cache-dependency-path: client/package-lock.json
 
       - name: Install Rust stable
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
