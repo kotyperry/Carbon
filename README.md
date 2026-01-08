@@ -46,6 +46,7 @@ npm run dev
 ```
 
 This will start:
+
 - **Frontend**: http://localhost:5173
 - **Backend**: http://localhost:3001
 
@@ -88,11 +89,13 @@ docker stop canban
 Board data is stored in a Docker volume (`canban-data`) which persists across container restarts.
 
 To backup your data:
+
 ```bash
 docker cp canban:/app/data/boards.json ./boards-backup.json
 ```
 
 To restore data:
+
 ```bash
 docker cp ./boards-backup.json canban:/app/data/boards.json
 ```
@@ -123,33 +126,39 @@ canban/
 ## Usage
 
 ### Boards
+
 - Click **+** in the sidebar to create a new board
 - Click a board name to switch to it
 - Hover over a board to rename or delete it
 
 ### Columns
+
 - Click **Add Column** to create a new column
 - Click the column title to rename it
 - Use the **⋮** menu to delete a column
 - Drag columns to reorder them
 
 ### Cards
+
 - Click **Add a card** at the bottom of any column
 - Click a card to open the detail modal
 - Edit title and description in the modal
 - Drag cards between columns or reorder within a column
 
 ### Mobile
+
 - Tap the hamburger menu (☰) to open the sidebar
 - Long-press and drag to move cards on touch devices
 - Swipe horizontally to scroll through columns
 
 ### Theme
+
 - Click the sun/moon icon in the sidebar footer to toggle dark/light mode
 
 ## Data Storage
 
 All your data is stored locally in `data/boards.json`. This file is:
+
 - Automatically created on first run
 - Human-readable JSON format
 - Easy to backup or transfer
@@ -174,12 +183,12 @@ cd client && npm run build
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Server port (production) |
-| `DATA_DIR` | `./data` | Directory for storing board data |
-| `STATIC_DIR` | `./client/dist` | Directory for static files |
+| Variable     | Default         | Description                      |
+| ------------ | --------------- | -------------------------------- |
+| `PORT`       | `3000`          | Server port (production)         |
+| `DATA_DIR`   | `./data`        | Directory for storing board data |
+| `STATIC_DIR` | `./client/dist` | Directory for static files       |
 
 ## License
 
-MIT
+Private
