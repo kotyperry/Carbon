@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { relaunch } from '@tauri-apps/plugin-process';
+
+// Check for updates every 5 minutes
+const UPDATE_CHECK_INTERVAL = 5 * 60 * 1000;
 
 function UpdateNotification() {
   const [updateInfo, setUpdateInfo] = useState(null);
@@ -8,11 +11,22 @@ function UpdateNotification() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState(null);
   const [dismissed, setDismissed] = useState(false);
+  const dismissedVersionRef = useRef(null);
 
   useEffect(() => {
     // Check for updates on app startup
     checkForUpdates();
-  }, []);
+
+    // Set up periodic update checks every 5 minutes
+    const intervalId = setInterval(() => {
+      // Only check if not currently downloading and notification isn't showing
+      if (!isDownloading && !updateInfo) {
+        checkForUpdates();
+      }
+    }, UPDATE_CHECK_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [isDownloading, updateInfo]);
 
   const checkForUpdates = async () => {
     setIsChecking(true);
@@ -21,7 +35,11 @@ function UpdateNotification() {
     try {
       const result = await invoke('check_for_updates');
       if (result.available) {
-        setUpdateInfo(result);
+        // Only show notification if this version wasn't already dismissed
+        if (dismissedVersionRef.current !== result.version) {
+          setUpdateInfo(result);
+          setDismissed(false);
+        }
       }
     } catch (err) {
       console.error('Failed to check for updates:', err);
@@ -47,7 +65,12 @@ function UpdateNotification() {
   };
 
   const handleDismiss = () => {
+    // Remember which version was dismissed so we don't show it again
+    if (updateInfo?.version) {
+      dismissedVersionRef.current = updateInfo.version;
+    }
     setDismissed(true);
+    setUpdateInfo(null);
   };
 
   // Don't show anything if no update available, dismissed, or checking
