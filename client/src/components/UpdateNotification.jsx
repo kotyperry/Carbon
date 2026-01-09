@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { relaunch } from '@tauri-apps/plugin-process';
 
@@ -12,42 +12,66 @@ function UpdateNotification() {
   const [error, setError] = useState(null);
   const [dismissed, setDismissed] = useState(false);
   const dismissedVersionRef = useRef(null);
+  const hasCheckedRef = useRef(false);
+
+  const checkForUpdates = useCallback(async () => {
+    // Prevent concurrent checks
+    if (isChecking) return;
+    
+    setIsChecking(true);
+    setError(null);
+    
+    console.log('[Updater] Checking for updates...');
+    
+    try {
+      const result = await invoke('check_for_updates');
+      console.log('[Updater] Check result:', result);
+      
+      if (result.available) {
+        console.log('[Updater] Update available:', result.version);
+        // Only show notification if this version wasn't already dismissed
+        if (dismissedVersionRef.current !== result.version) {
+          setUpdateInfo(result);
+          setDismissed(false);
+        } else {
+          console.log('[Updater] Version was previously dismissed');
+        }
+      } else {
+        console.log('[Updater] No update available');
+      }
+    } catch (err) {
+      console.error('[Updater] Failed to check for updates:', err);
+      // Don't show error to user for automatic checks
+    } finally {
+      setIsChecking(false);
+    }
+  }, [isChecking]);
 
   useEffect(() => {
-    // Check for updates on app startup
-    checkForUpdates();
+    // Check for updates on app startup (only once)
+    if (!hasCheckedRef.current) {
+      hasCheckedRef.current = true;
+      // Small delay to ensure app is fully loaded
+      const startupTimeout = setTimeout(() => {
+        checkForUpdates();
+      }, 2000);
+      
+      return () => clearTimeout(startupTimeout);
+    }
+  }, [checkForUpdates]);
 
+  useEffect(() => {
     // Set up periodic update checks every 5 minutes
     const intervalId = setInterval(() => {
       // Only check if not currently downloading and notification isn't showing
-      if (!isDownloading && !updateInfo) {
+      if (!isDownloading && !updateInfo && !isChecking) {
+        console.log('[Updater] Periodic check triggered');
         checkForUpdates();
       }
     }, UPDATE_CHECK_INTERVAL);
 
     return () => clearInterval(intervalId);
-  }, [isDownloading, updateInfo]);
-
-  const checkForUpdates = async () => {
-    setIsChecking(true);
-    setError(null);
-    
-    try {
-      const result = await invoke('check_for_updates');
-      if (result.available) {
-        // Only show notification if this version wasn't already dismissed
-        if (dismissedVersionRef.current !== result.version) {
-          setUpdateInfo(result);
-          setDismissed(false);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to check for updates:', err);
-      // Don't show error to user for automatic checks
-    } finally {
-      setIsChecking(false);
-    }
-  };
+  }, [isDownloading, updateInfo, isChecking, checkForUpdates]);
 
   const handleUpdate = async () => {
     setIsDownloading(true);
@@ -75,8 +99,9 @@ function UpdateNotification() {
     setUpdateInfo(null);
   };
 
-  // Don't show anything if no update available, dismissed, or checking
-  if (!updateInfo || dismissed || isChecking) {
+  // Don't show anything if no update available or dismissed
+  // Note: We no longer hide during isChecking to avoid missing the notification
+  if (!updateInfo || dismissed) {
     return null;
   }
 

@@ -1,6 +1,6 @@
 [package]
 name = "canban"
-version = "1.0.15"
+version = "1.0.17"
 description = "A local Kanban board application for project management"
 authors = ["you"]
 license = "MIT"
