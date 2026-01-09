@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { open } from '@tauri-apps/plugin-shell';
 import { useBoardStore } from '../store/boardStore';
 
 function BookmarkCard({ bookmark, onEdit }) {
@@ -39,9 +40,15 @@ function BookmarkCard({ bookmark, onEdit }) {
   const faviconUrl = bookmark.favicon || getFaviconUrl(bookmark.url);
   const tags = (bookmark.tags || []).map(key => BOOKMARK_TAGS[key]).filter(Boolean);
 
-  const handleOpenLink = (e) => {
+  const handleOpenLink = async (e) => {
     e.stopPropagation();
-    window.open(bookmark.url, '_blank', 'noopener,noreferrer');
+    try {
+      await open(bookmark.url);
+    } catch (error) {
+      console.error('Failed to open URL:', error);
+      // Fallback to window.open if Tauri shell fails
+      window.open(bookmark.url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handleFavorite = async (e) => {

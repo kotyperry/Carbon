@@ -3,10 +3,12 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useBoardStore, LABELS, PRIORITIES } from '../store/boardStore';
 import CardModal from './CardModal';
+import CardContextMenu from './CardContextMenu';
 
 function Card({ card, columnId, isDragging: isDraggingOverlay }) {
   const { theme, toggleChecklistItem } = useBoardStore();
   const [showModal, setShowModal] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y } or null
 
   const {
     attributes,
@@ -55,6 +57,13 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
     }
   };
 
+  // Handle right-click context menu
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
   return (
     <>
       <div
@@ -63,6 +72,7 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
         {...attributes}
         {...listeners}
         onClick={handleCardClick}
+        onContextMenu={handleContextMenu}
         className={`
           p-3 rounded-lg cursor-grab active:cursor-grabbing
           transition-all animate-fade-in
@@ -114,8 +124,8 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
               />
             </div>
             
-            {/* Checklist Items - show all items with max height and scroll */}
-            <div className="space-y-0.5 pt-1 max-h-32 overflow-y-auto">
+            {/* Checklist Items - show all items */}
+            <div className="space-y-0.5 pt-1">
               {checklist.map(item => (
                 <div
                   key={item.id}
@@ -177,6 +187,14 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
           card={card}
           columnId={columnId}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {contextMenu && (
+        <CardContextMenu
+          card={card}
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
         />
       )}
     </>

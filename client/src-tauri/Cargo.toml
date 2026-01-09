@@ -1,6 +1,6 @@
 [package]
 name = "canban"
-version = "1.0.23"
+version = "1.0.24"
 description = "A local Kanban board application for project management"
 authors = ["you"]
 license = "MIT"
@@ -23,5 +23,6 @@ tauri = { version = "2.9.5", features = ["devtools"] }
 tauri-plugin-log = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-shell = "2"
 dirs = "5.0"
 chrono = "0.4"

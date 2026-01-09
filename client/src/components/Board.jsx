@@ -379,8 +379,8 @@ function Board({ onMenuClick }) {
           </div>
         </div>
       ) : (
-        /* Columns Container - Horizontal Scroll Layout */
-        <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6">
+        /* Columns Container - Responsive Grid Layout */
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -389,25 +389,25 @@ function Board({ onMenuClick }) {
             onDragEnd={handleDragEnd}
           >
             {/* 
-              Horizontal flexbox layout for Kanban columns:
-              - Columns align at the top (items-start)
-              - Horizontal scroll when columns exceed viewport
-              - Fixed column widths for consistent appearance
+              Responsive CSS Grid layout for Kanban columns:
+              - Columns wrap to new rows when viewport is too narrow
+              - Minimum column width of 288px, grows to fill available space
+              - Masonry-like behavior with auto-fill
             */}
-            <div className="flex items-start gap-4 pb-4 min-h-full">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-4 pb-4 items-start">
               <SortableContext
                 items={board.columns.map(c => c.id)}
                 strategy={rectSortingStrategy}
               >
                 {board.columns.map((column) => (
-                  <div key={column.id} className="flex-shrink-0 w-72 sm:w-80">
+                  <div key={column.id}>
                     <Column column={column} />
                   </div>
                 ))}
               </SortableContext>
 
               {/* Add Column Button */}
-              <div className="flex-shrink-0 w-72 sm:w-80">
+              <div>
                 {isAddingColumn ? (
                   <form
                     onSubmit={handleAddColumn}
