@@ -15,8 +15,6 @@ concurrency:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   create-release:
@@ -140,32 +138,28 @@ jobs:
         run: |
           # Wait a moment for release assets to be available
           sleep 10
-          
-          # Create a directory for GitHub Pages
-          mkdir -p gh-pages-content
-          
+
           # Get the asset download URL for latest.json
           ASSET_URL=$(curl -s \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ needs.create-release.outputs.version }}" \
             | jq -r '.assets[] | select(.name == "latest.json") | .url')
-          
+
           echo "Asset URL: $ASSET_URL"
-          
+
           # Download the actual file
           curl -L \
             -H "Accept: application/octet-stream" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -o gh-pages-content/latest.json \
+            -o latest.json \
             "$ASSET_URL"
-          
-          echo "Contents of latest.json:"
-          cat gh-pages-content/latest.json
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+          echo "Contents of latest.json:"
+          cat latest.json
+
+      - name: Upload to Cloudflare R2
+        uses: cloudflare/wrangler-action@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./gh-pages-content
-          publish_branch: gh-pages
-          force_orphan: true
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: r2 object put carbon-updates/latest.json --file=latest.json --content-type=application/json
