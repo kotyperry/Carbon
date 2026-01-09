@@ -139,7 +139,7 @@ jobs:
             echo "ERROR: Could not find latest.json asset"
             exit 1
           fi
-          
+
           if [ -z "$APP_TAR_URL" ] || [ "$APP_TAR_URL" == "null" ]; then
             echo "ERROR: Could not find .app.tar.gz asset"
             exit 1
@@ -163,7 +163,7 @@ jobs:
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -o "$APP_TAR_NAME" \
             "$APP_TAR_URL"
-          
+
           echo "Downloaded app archive: $(ls -lh $APP_TAR_NAME)"
 
           # Update latest.json to point to R2 URLs instead of GitHub
@@ -173,9 +173,9 @@ jobs:
               .value.url = "\($base_url)/\($app_name)"
             )
           ' latest.json > latest_updated.json
-          
+
           mv latest_updated.json latest.json
-          
+
           echo "Updated latest.json:"
           cat latest.json
 
@@ -187,7 +187,7 @@ jobs:
 
           # Save app tar name for next step
           echo "APP_TAR_NAME=$APP_TAR_NAME" >> $GITHUB_ENV
-          
+
           echo "Successfully prepared all assets for upload"
 
       - name: Upload app archive to Cloudflare R2
