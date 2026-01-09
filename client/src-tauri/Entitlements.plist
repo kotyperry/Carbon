@@ -14,9 +14,10 @@
         <string>CloudKit</string>
     </array>
     
-    <!-- App Sandbox (required for Mac App Store) -->
+    <!-- App Sandbox - DISABLED for development -->
+    <!-- Enable this only for Mac App Store distribution with proper provisioning -->
     <key>com.apple.security.app-sandbox</key>
-    <true/>
+    <false/>
     
     <!-- Network access for CloudKit -->
     <key>com.apple.security.network.client</key>
