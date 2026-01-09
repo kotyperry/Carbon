@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useBoardStore } from './store/boardStore';
 import Sidebar from './components/Sidebar';
 import Board from './components/Board';
@@ -6,15 +6,33 @@ import BookmarksView from './components/BookmarksView';
 import NotesView from './components/NotesView';
 import TitlebarDragRegion from './components/TitlebarDragRegion';
 import UpdateNotification from './components/UpdateNotification';
+import { useHotkeys, HOTKEYS } from './hooks/useHotkeys';
 
 function App() {
-  const { fetchData, isLoading, error, theme, activeView } = useBoardStore();
+  const { fetchData, isLoading, error, theme, activeView, setActiveView, toggleTheme } = useBoardStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showHotkeyHint, setShowHotkeyHint] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Toggle sidebar collapsed state
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => !prev);
+  }, []);
+
+  // Keyboard hotkeys for navigation
+  useHotkeys({
+    [HOTKEYS.BOARDS]: () => setActiveView('boards'),
+    [HOTKEYS.BOOKMARKS]: () => setActiveView('bookmarks'),
+    [HOTKEYS.NOTES]: () => setActiveView('notes'),
+    [HOTKEYS.TOGGLE_SIDEBAR]: toggleSidebar,
+    [HOTKEYS.TOGGLE_THEME]: toggleTheme,
+    '?': () => setShowHotkeyHint(prev => !prev),
+    [HOTKEYS.ESCAPE]: () => setShowHotkeyHint(false),
+  });
 
   // Close sidebar when clicking outside on mobile
   const handleOverlayClick = () => {
@@ -93,6 +111,93 @@ function App() {
 
       {/* Update notification */}
       <UpdateNotification />
+
+      {/* Hotkey hint overlay */}
+      {showHotkeyHint && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowHotkeyHint(false)}
+        >
+          <div 
+            className={`
+              max-w-md w-full mx-4 rounded-2xl p-6 shadow-2xl
+              ${theme === 'dark' ? 'bg-charcoal-800 border border-charcoal-700' : 'bg-white border border-gray-200'}
+            `}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Keyboard Shortcuts
+              </h2>
+              <button
+                onClick={() => setShowHotkeyHint(false)}
+                className={`p-1.5 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-charcoal-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Navigation */}
+              <div>
+                <h3 className={`text-xs font-medium uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Navigation
+                </h3>
+                <div className="space-y-2">
+                  <HotkeyRow theme={theme} keys={['1']} description="Go to Boards" />
+                  <HotkeyRow theme={theme} keys={['2']} description="Go to Bookmarks" />
+                  <HotkeyRow theme={theme} keys={['3']} description="Go to Notes" />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div>
+                <h3 className={`text-xs font-medium uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Actions
+                </h3>
+                <div className="space-y-2">
+                  <HotkeyRow theme={theme} keys={['[']} description="Toggle sidebar" />
+                  <HotkeyRow theme={theme} keys={['T']} description="Toggle theme" />
+                  <HotkeyRow theme={theme} keys={['?']} description="Show/hide shortcuts" />
+                  <HotkeyRow theme={theme} keys={['Esc']} description="Close dialogs" />
+                </div>
+              </div>
+            </div>
+
+            <div className={`mt-6 pt-4 border-t text-center text-xs ${theme === 'dark' ? 'border-charcoal-700 text-gray-500' : 'border-gray-200 text-gray-400'}`}>
+              Press <kbd className={`px-1.5 py-0.5 rounded ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-100'}`}>?</kbd> anytime to toggle this panel
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Hotkey row component for the shortcuts panel
+function HotkeyRow({ theme, keys, description }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+        {description}
+      </span>
+      <div className="flex items-center gap-1">
+        {keys.map((key, i) => (
+          <kbd
+            key={i}
+            className={`
+              px-2 py-1 text-xs font-mono rounded-md border
+              ${theme === 'dark' 
+                ? 'bg-charcoal-700 border-charcoal-600 text-gray-300' 
+                : 'bg-gray-100 border-gray-200 text-gray-700'}
+            `}
+          >
+            {key}
+          </kbd>
+        ))}
+      </div>
     </div>
   );
 }

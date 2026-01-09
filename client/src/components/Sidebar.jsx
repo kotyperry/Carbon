@@ -418,7 +418,13 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                   </svg>
-                  Boards
+                  <span className="flex-1 text-left">Boards</span>
+                  <kbd className={`
+                    hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded
+                    ${activeView === 'boards'
+                      ? 'bg-charcoal-900/20 text-charcoal-900'
+                      : theme === 'dark' ? 'bg-charcoal-600 text-gray-400' : 'bg-gray-200 text-gray-500'}
+                  `}>1</kbd>
                 </button>
                 <button
                   onClick={() => {
@@ -435,7 +441,13 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
-                  Bookmarks
+                  <span className="flex-1 text-left">Bookmarks</span>
+                  <kbd className={`
+                    hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded
+                    ${activeView === 'bookmarks'
+                      ? 'bg-charcoal-900/20 text-charcoal-900'
+                      : theme === 'dark' ? 'bg-charcoal-600 text-gray-400' : 'bg-gray-200 text-gray-500'}
+                  `}>2</kbd>
                 </button>
                 <button
                   onClick={() => setActiveView('notes')}
@@ -449,7 +461,13 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                  Notes
+                  <span className="flex-1 text-left">Notes</span>
+                  <kbd className={`
+                    hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded
+                    ${activeView === 'notes'
+                      ? 'bg-charcoal-900/20 text-charcoal-900'
+                      : theme === 'dark' ? 'bg-charcoal-600 text-gray-400' : 'bg-gray-200 text-gray-500'}
+                  `}>3</kbd>
                 </button>
               </div>
             </div>
@@ -721,15 +739,16 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
       {/* Footer - Theme Toggle & Version */}
       <div className={`p-4 border-t flex items-center justify-between ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
         {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className={`
-            relative w-14 h-7 rounded-full transition-colors duration-300 ease-in-out
-            ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-200'}
-          `}
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        >
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className={`
+              relative w-14 h-7 rounded-full transition-colors duration-300 ease-in-out
+              ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-200'}
+            `}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (T)`}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
           {/* Toggle track icons */}
           <div className="absolute inset-0 flex items-center justify-between px-1.5">
             {/* Sun icon (left side) */}
@@ -771,11 +790,20 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
             )}
           </div>
         </button>
+        </div>
         
-        {/* Version */}
-        {(!isCollapsed || window.innerWidth < 1024) && appVersion && (
-          <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-            v{appVersion}
+        {/* Version & Keyboard Shortcuts Hint */}
+        {(!isCollapsed || window.innerWidth < 1024) && (
+          <div className="flex items-center gap-2">
+            {appVersion && (
+              <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                v{appVersion}
+              </span>
+            )}
+            <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>·</span>
+            <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+              Press <kbd className={`px-1 py-0.5 rounded text-[10px] font-mono ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-100'}`}>?</kbd> for shortcuts
+            </span>
           </div>
         )}
       </div>
