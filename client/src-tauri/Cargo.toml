@@ -1,6 +1,6 @@
 [package]
 name = "canban"
-version = "1.0.1"
+version = "1.0.2"
 description = "A local Kanban board application for project management"
 authors = ["you"]
 license = "MIT"
@@ -13,7 +13,7 @@ name = "carbon_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.3" }
+tauri-build = { version = "2.5.3", features = [] }
 
 [dependencies]
 serde_json = "1.0"
