@@ -11,6 +11,7 @@ function CardModal({ card, columnId, onClose }) {
     addChecklistItem,
     toggleChecklistItem,
     deleteChecklistItem,
+    updateChecklistItem,
     archiveCard,
     theme 
   } = useBoardStore();
@@ -23,6 +24,8 @@ function CardModal({ card, columnId, onClose }) {
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [copiedChecklist, setCopiedChecklist] = useState(false);
+  const [editingChecklistItemId, setEditingChecklistItemId] = useState(null);
+  const [editingChecklistItemText, setEditingChecklistItemText] = useState('');
 
   // Close on escape key
   useEffect(() => {
@@ -65,6 +68,24 @@ function CardModal({ card, columnId, onClose }) {
       await addChecklistItem(columnId, card.id, newChecklistItem.trim());
       setNewChecklistItem('');
     }
+  };
+
+  const handleStartEditChecklistItem = (item) => {
+    setEditingChecklistItemId(item.id);
+    setEditingChecklistItemText(item.text);
+  };
+
+  const handleSaveChecklistItem = async () => {
+    if (editingChecklistItemText.trim() && editingChecklistItemId) {
+      await updateChecklistItem(columnId, card.id, editingChecklistItemId, editingChecklistItemText.trim());
+    }
+    setEditingChecklistItemId(null);
+    setEditingChecklistItemText('');
+  };
+
+  const handleCancelEditChecklistItem = () => {
+    setEditingChecklistItemId(null);
+    setEditingChecklistItemText('');
   };
 
   // Copy checklist to clipboard
@@ -416,9 +437,33 @@ function CardModal({ card, columnId, onClose }) {
                       </svg>
                     )}
                   </button>
-                  <span className={`flex-1 font-mono text-sm ${item.completed ? 'line-through text-gray-500' : theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                    {item.text}
-                  </span>
+                  {editingChecklistItemId === item.id ? (
+                    <input
+                      type="text"
+                      value={editingChecklistItemText}
+                      onChange={(e) => setEditingChecklistItemText(e.target.value)}
+                      onBlur={handleSaveChecklistItem}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveChecklistItem();
+                        if (e.key === 'Escape') handleCancelEditChecklistItem();
+                      }}
+                      autoFocus
+                      className={`
+                        flex-1 px-2 py-1 rounded font-mono text-sm border
+                        ${theme === 'dark'
+                          ? 'bg-charcoal-600 border-charcoal-500 text-white'
+                          : 'bg-white border-gray-300 text-gray-900'}
+                        focus:border-cyber-cyan
+                      `}
+                    />
+                  ) : (
+                    <span 
+                      onClick={() => handleStartEditChecklistItem(item)}
+                      className={`flex-1 font-mono text-sm cursor-text hover:text-cyber-cyan transition-colors ${item.completed ? 'line-through text-gray-500' : theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}
+                    >
+                      {item.text}
+                    </span>
+                  )}
                   <button
                     onClick={() => deleteChecklistItem(columnId, card.id, item.id)}
                     className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 transition-opacity"

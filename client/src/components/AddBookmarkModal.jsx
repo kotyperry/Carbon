@@ -5,7 +5,7 @@ import { useBoardStore, BOOKMARK_TAGS, TAG_COLORS } from '../store/boardStore';
 function AddBookmarkModal({ bookmark, onClose }) {
   const { theme, addBookmark, updateBookmark, collections, addCustomTag, getBookmarkTags } = useBoardStore();
   
-  const [url, setUrl] = useState(bookmark?.url || '');
+  const [url, setUrl] = useState(bookmark?.url || 'https://');
   const [title, setTitle] = useState(bookmark?.title || '');
   const [description, setDescription] = useState(bookmark?.description || '');
   const [selectedTags, setSelectedTags] = useState(bookmark?.tags || []);

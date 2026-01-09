@@ -529,6 +529,41 @@ export const useBoardStore = create((set, get) => ({
     await get().saveData();
   },
 
+  updateChecklistItem: async (columnId, cardId, itemId, newText) => {
+    const board = get().getCurrentBoard();
+    if (!board) return;
+
+    set(state => ({
+      boards: state.boards.map(b =>
+        b.id === board.id
+          ? {
+              ...b,
+              columns: b.columns.map(c =>
+                c.id === columnId
+                  ? {
+                      ...c,
+                      cards: c.cards.map(card =>
+                        card.id === cardId
+                          ? {
+                              ...card,
+                              checklist: (card.checklist || []).map(item =>
+                                item.id === itemId
+                                  ? { ...item, text: newText }
+                                  : item
+                              )
+                            }
+                          : card
+                      )
+                    }
+                  : c
+              )
+            }
+          : b
+      )
+    }));
+    await get().saveData();
+  },
+
   clearCompletedChecklistItems: async (columnId, cardId) => {
     const board = get().getCurrentBoard();
     if (!board) return;
