@@ -107,76 +107,48 @@ function UpdateNotification() {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
-      <div className="bg-charcoal-800 border border-charcoal-700 rounded-2xl shadow-2xl p-5 max-w-sm">
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-cyber-cyan/10 flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-cyber-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-white font-semibold text-sm">Update Available</h3>
-            <p className="text-gray-400 text-xs mt-0.5">
-              Version {updateInfo.version} is ready to install
-            </p>
-          </div>
-          <button
-            onClick={handleDismiss}
-            className="text-gray-500 hover:text-gray-300 transition-colors p-1 -m-1"
-            disabled={isDownloading}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+      <div 
+        className="bg-charcoal-800 border border-charcoal-700/50 rounded-xl p-3 flex items-center gap-3"
+        style={{ boxShadow: '0 8px 32px -8px rgba(0, 212, 255, 0.25)' }}
+      >
+        {/* Version badge */}
+        <span className="text-cyber-cyan text-xs font-medium px-2 py-0.5 bg-cyber-cyan/10 rounded-md">
+          v{updateInfo.version}
+        </span>
 
-        {/* Release notes */}
-        {updateInfo.body && (
-          <div className="mb-4 p-3 bg-charcoal-900/50 rounded-xl">
-            <p className="text-gray-300 text-xs leading-relaxed line-clamp-3">
-              {updateInfo.body}
-            </p>
-          </div>
-        )}
-
-        {/* Error message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-            <p className="text-red-400 text-xs">{error}</p>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={handleDismiss}
-            disabled={isDownloading}
-            className="flex-1 px-4 py-2.5 text-gray-400 hover:text-white text-sm font-medium rounded-xl hover:bg-charcoal-700 transition-colors disabled:opacity-50"
-          >
-            Later
-          </button>
+        {/* Error or Update button */}
+        {error ? (
+          <span className="text-red-400 text-xs">{error}</span>
+        ) : (
           <button
             onClick={handleUpdate}
             disabled={isDownloading}
-            className="flex-1 px-4 py-2.5 bg-cyber-cyan text-charcoal-900 text-sm font-semibold rounded-xl hover:bg-cyber-cyan-dim transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="text-xs font-medium text-gray-300 hover:text-white transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             {isDownloading ? (
               <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Updating...
+                <span>Updating...</span>
               </>
             ) : (
-              <>
-                Update & Restart
-              </>
+              <span>Update & Restart</span>
             )}
           </button>
-        </div>
+        )}
+
+        {/* Dismiss */}
+        <button
+          onClick={handleDismiss}
+          className="text-gray-500 hover:text-gray-300 transition-colors ml-1"
+          disabled={isDownloading}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
     </div>
   );
