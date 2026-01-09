@@ -323,7 +323,7 @@ dependencies = [
 
 [[package]]
 name = "canban"
-version = "1.0.1"
+version = "1.0.4"
 dependencies = [
  "chrono",
  "dirs 5.0.1",

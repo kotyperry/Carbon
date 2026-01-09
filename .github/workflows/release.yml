@@ -136,18 +136,39 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Wait a moment for release assets to be available
-          sleep 10
-
-          # Get the asset download URL for latest.json
-          ASSET_URL=$(curl -s \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ needs.create-release.outputs.version }}" \
-            | jq -r '.assets[] | select(.name == "latest.json") | .url')
-
-          echo "Asset URL: $ASSET_URL"
+          VERSION="v${{ needs.create-release.outputs.version }}"
+          echo "Looking for release: $VERSION"
+          
+          # Retry loop - assets may take time to be available
+          for i in {1..6}; do
+            echo "Attempt $i: Fetching release info..."
+            
+            RELEASE_INFO=$(curl -s \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/$VERSION")
+            
+            echo "Release name: $(echo "$RELEASE_INFO" | jq -r '.name')"
+            echo "Assets found: $(echo "$RELEASE_INFO" | jq -r '.assets | length')"
+            echo "Asset names: $(echo "$RELEASE_INFO" | jq -r '.assets[].name')"
+            
+            ASSET_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name == "latest.json") | .url')
+            
+            if [ -n "$ASSET_URL" ] && [ "$ASSET_URL" != "null" ]; then
+              echo "Found asset URL: $ASSET_URL"
+              break
+            fi
+            
+            echo "Asset not found yet, waiting 15 seconds..."
+            sleep 15
+          done
+          
+          if [ -z "$ASSET_URL" ] || [ "$ASSET_URL" == "null" ]; then
+            echo "ERROR: Could not find latest.json asset after multiple attempts"
+            exit 1
+          fi
 
           # Download the actual file
+          echo "Downloading latest.json..."
           curl -L \
             -H "Accept: application/octet-stream" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -156,6 +177,14 @@ jobs:
 
           echo "Contents of latest.json:"
           cat latest.json
+          
+          # Validate JSON
+          if ! jq empty latest.json 2>/dev/null; then
+            echo "ERROR: Downloaded file is not valid JSON"
+            exit 1
+          fi
+          
+          echo "Successfully downloaded latest.json"
 
       - name: Upload to Cloudflare R2
         uses: cloudflare/wrangler-action@v3
