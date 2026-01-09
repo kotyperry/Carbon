@@ -379,7 +379,7 @@ function Board({ onMenuClick }) {
           </div>
         </div>
       ) : (
-        /* Columns Container */
+        /* Columns Container - Masonry Layout */
         <div className="flex-1 overflow-auto p-4 sm:p-6">
           <DndContext
             sensors={sensors}
@@ -389,91 +389,93 @@ function Board({ onMenuClick }) {
             onDragEnd={handleDragEnd}
           >
             {/* 
-              Responsive grid layout:
-              - Mobile (< 640px): Single column, stacked vertically
-              - Tablet (640px - 1024px): 2 columns
-              - Desktop (> 1024px): 3 columns
-              - Extra large (> 1280px): 4 columns
-              Columns wrap and stack instead of horizontal scrolling
+              Masonry-style layout using CSS columns:
+              - Items flow top-to-bottom, then wrap to next column
+              - Add Column button stacks directly under shorter columns
+              - Responsive column count based on viewport
             */}
             <div className="
-              grid gap-4
-              grid-cols-1
-              sm:grid-cols-2
-              lg:grid-cols-3
-              xl:grid-cols-4
+              columns-1
+              sm:columns-2
+              lg:columns-3
+              xl:columns-4
+              gap-4
               pb-4
-              items-start
+              [column-fill:balance]
             ">
               <SortableContext
                 items={board.columns.map(c => c.id)}
                 strategy={rectSortingStrategy}
               >
                 {board.columns.map((column) => (
-                  <Column key={column.id} column={column} />
+                  <div key={column.id} className="break-inside-avoid mb-4">
+                    <Column column={column} />
+                  </div>
                 ))}
               </SortableContext>
 
               {/* Add Column Button */}
-              {isAddingColumn ? (
-                <form
-                  onSubmit={handleAddColumn}
-                  className={`
-                    w-full p-3 rounded-xl glass
-                    ${theme === 'dark' ? '' : 'bg-white/50'}
-                  `}
-                >
-                  <input
-                    type="text"
-                    value={newColumnTitle}
-                    onChange={(e) => setNewColumnTitle(e.target.value)}
-                    placeholder="Column title..."
-                    autoFocus
+              <div className="break-inside-avoid mb-4">
+                {isAddingColumn ? (
+                  <form
+                    onSubmit={handleAddColumn}
                     className={`
-                      w-full px-3 py-2 rounded-lg font-mono text-sm
-                      ${theme === 'dark'
-                        ? 'bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500'
-                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}
-                      border focus:border-cyber-cyan
+                      w-full p-3 rounded-xl glass
+                      ${theme === 'dark' ? '' : 'bg-white/50'}
                     `}
-                    onBlur={() => {
-                      if (!newColumnTitle.trim()) setIsAddingColumn(false);
-                    }}
-                  />
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      type="submit"
-                      className="flex-1 px-3 py-1.5 bg-cyber-cyan text-charcoal-900 rounded-lg font-mono text-sm font-medium hover:bg-cyber-cyan-dim"
-                    >
-                      Add
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingColumn(false)}
-                      className={`px-3 py-1.5 rounded-lg font-mono text-sm ${theme === 'dark' ? 'hover:bg-charcoal-700' : 'hover:bg-gray-100'}`}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <button
-                  onClick={() => setIsAddingColumn(true)}
-                  className={`
-                    w-full p-4 rounded-xl border-2 border-dashed
-                    flex items-center justify-center gap-2 font-mono text-sm
-                    transition-colors min-h-[60px]
-                    ${theme === 'dark'
-                      ? 'border-charcoal-600 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan'
-                      : 'border-gray-300 text-gray-400 hover:border-cyber-cyan hover:text-cyber-cyan'}
-                  `}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Column
-                </button>
-              )}
+                  >
+                    <input
+                      type="text"
+                      value={newColumnTitle}
+                      onChange={(e) => setNewColumnTitle(e.target.value)}
+                      placeholder="Column title..."
+                      autoFocus
+                      className={`
+                        w-full px-3 py-2 rounded-lg font-mono text-sm
+                        ${theme === 'dark'
+                          ? 'bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500'
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}
+                        border focus:border-cyber-cyan
+                      `}
+                      onBlur={() => {
+                        if (!newColumnTitle.trim()) setIsAddingColumn(false);
+                      }}
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="submit"
+                        className="flex-1 px-3 py-1.5 bg-cyber-cyan text-charcoal-900 rounded-lg font-mono text-sm font-medium hover:bg-cyber-cyan-dim"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingColumn(false)}
+                        className={`px-3 py-1.5 rounded-lg font-mono text-sm ${theme === 'dark' ? 'hover:bg-charcoal-700' : 'hover:bg-gray-100'}`}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setIsAddingColumn(true)}
+                    className={`
+                      w-full p-4 rounded-xl border-2 border-dashed
+                      flex items-center justify-center gap-2 font-mono text-sm
+                      transition-colors min-h-[60px]
+                      ${theme === 'dark'
+                        ? 'border-charcoal-600 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan'
+                        : 'border-gray-300 text-gray-400 hover:border-cyber-cyan hover:text-cyber-cyan'}
+                    `}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Column
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Drag Overlay */}
