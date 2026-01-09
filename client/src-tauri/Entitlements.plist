@@ -5,7 +5,7 @@
     <!-- iCloud Container Identifiers -->
     <key>com.apple.developer.icloud-container-identifiers</key>
     <array>
-        <string>iCloud.dev.blkdog.carbon/string>
+        <string>iCloud.dev.blkdog.carbon</string>
     </array>
     
     <!-- iCloud Services - CloudKit -->
