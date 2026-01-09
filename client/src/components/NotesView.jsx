@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useBoardStore } from '../store/boardStore';
 import NoteCard from './NoteCard';
 import NoteEditorModal from './NoteEditorModal';
+import SyncStatus from './SyncStatus';
 
 function NotesView({ onMenuClick }) {
   const { 
@@ -84,6 +85,9 @@ function NotesView({ onMenuClick }) {
             </button>
           )}
         </div>
+
+        {/* iCloud Sync Status */}
+        <SyncStatus />
 
         {/* New Note Button */}
         <button

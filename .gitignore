@@ -23,3 +23,7 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Swift build artifacts
+client/src-tauri/swift/.build/
+client/src-tauri/lib/

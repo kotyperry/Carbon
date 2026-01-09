@@ -17,6 +17,7 @@ import {
 import { useBoardStore, LABELS, PRIORITIES } from "../store/boardStore";
 import Column from "./Column";
 import Card from "./Card";
+import SyncStatus from "./SyncStatus";
 
 function Board({ onMenuClick }) {
   const {
@@ -367,6 +368,9 @@ function Board({ onMenuClick }) {
             </span>
           </button>
         )}
+
+        {/* iCloud Sync Status */}
+        <SyncStatus />
       </header>
 
       {/* Archive View */}

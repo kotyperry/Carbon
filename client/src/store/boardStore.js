@@ -6,6 +6,11 @@ const isTauri = () => {
   return typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
 };
 
+// Check if running on macOS (for CloudKit availability)
+const isMacOS = () => {
+  return typeof navigator !== 'undefined' && navigator.platform?.toLowerCase().includes('mac');
+};
+
 // Dynamic import for Tauri API
 let invoke = null;
 if (isTauri()) {
@@ -13,6 +18,15 @@ if (isTauri()) {
     invoke = module.invoke;
   });
 }
+
+// Debounce helper for sync operations
+const debounce = (fn, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
 
 // Predefined labels with colors (for kanban cards)
 export const LABELS = {
@@ -91,6 +105,42 @@ const api = {
       body: JSON.stringify(data)
     });
     return response.ok;
+  },
+
+  // CloudKit sync API (macOS only)
+  async checkiCloudAccount() {
+    if (isTauri() && invoke && isMacOS()) {
+      return await invoke('check_icloud_account');
+    }
+    return false;
+  },
+
+  async getSyncStatus() {
+    if (isTauri() && invoke && isMacOS()) {
+      return await invoke('get_sync_status');
+    }
+    return { status: 'offline', error: 'Not available' };
+  },
+
+  async syncToCloud(data) {
+    if (isTauri() && invoke && isMacOS()) {
+      return await invoke('sync_to_cloud', { data });
+    }
+    return { success: false, error: 'CloudKit not available' };
+  },
+
+  async syncFromCloud() {
+    if (isTauri() && invoke && isMacOS()) {
+      return await invoke('sync_from_cloud');
+    }
+    return { success: false, error: 'CloudKit not available' };
+  },
+
+  async initCloudKit() {
+    if (isTauri() && invoke && isMacOS()) {
+      return await invoke('init_cloudkit');
+    }
+    return false;
   }
 };
 
@@ -119,6 +169,13 @@ export const useBoardStore = create((set, get) => ({
   // View state
   activeView: 'boards', // 'boards', 'bookmarks', or 'notes'
 
+  // iCloud Sync state
+  syncEnabled: false,
+  syncStatus: 'idle', // 'idle', 'syncing', 'synced', 'error', 'offline'
+  syncError: null,
+  lastModified: new Date().toISOString(),
+  iCloudAvailable: false,
+
   // Set active view
   setActiveView: (view) => {
     set({ activeView: view });
@@ -140,6 +197,16 @@ export const useBoardStore = create((set, get) => ({
       const customTags = data.customTags || {};
       BOOKMARK_TAGS = { ...DEFAULT_BOOKMARK_TAGS, ...customTags };
       
+      // Check iCloud availability on macOS
+      let iCloudAvailable = false;
+      if (isTauri() && isMacOS()) {
+        try {
+          iCloudAvailable = await api.checkiCloudAccount();
+        } catch (e) {
+          console.log('iCloud check failed:', e);
+        }
+      }
+      
       set({
         boards: data.boards || [],
         activeBoard: data.activeBoard,
@@ -153,11 +220,19 @@ export const useBoardStore = create((set, get) => ({
         customTags: customTags,
         notes: data.notes || [],
         activeView: data.activeView || 'boards',
+        syncEnabled: data.syncEnabled || false,
+        lastModified: data.lastModified || new Date().toISOString(),
+        iCloudAvailable,
         isLoading: false
       });
       // Apply theme to document
       document.documentElement.classList.toggle('dark', data.theme === 'dark');
       document.documentElement.classList.toggle('light', data.theme === 'light');
+
+      // If sync is enabled and iCloud is available, perform initial sync
+      if (data.syncEnabled && iCloudAvailable) {
+        get().performSync();
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
       set({ error: error.message, isLoading: false });
@@ -166,13 +241,41 @@ export const useBoardStore = create((set, get) => ({
 
   // Save all data to Tauri backend or HTTP API
   saveData: async () => {
-    const { boards, activeBoard, theme, bookmarks, collections, customTags, notes, activeView } = get();
+    const { boards, activeBoard, theme, bookmarks, collections, customTags, notes, activeView, syncEnabled } = get();
+    const lastModified = new Date().toISOString();
+    
     try {
-      await api.writeData({ boards, activeBoard, theme, bookmarks, collections, customTags, notes, activeView });
+      await api.writeData({ 
+        boards, 
+        activeBoard, 
+        theme, 
+        bookmarks, 
+        collections, 
+        customTags, 
+        notes, 
+        activeView,
+        lastModified,
+        syncEnabled
+      });
+      
+      set({ lastModified });
+      
+      // Trigger sync if enabled (debounced)
+      if (syncEnabled) {
+        get().debouncedSync();
+      }
     } catch (error) {
       console.error('Failed to save data:', error);
     }
   },
+
+  // Debounced sync to avoid too many sync calls
+  debouncedSync: debounce(async () => {
+    const store = useBoardStore.getState();
+    if (store.syncEnabled && store.iCloudAvailable) {
+      await store.performSync();
+    }
+  }, 2000),
 
   // Get current board
   getCurrentBoard: () => {
@@ -1150,5 +1253,190 @@ export const useBoardStore = create((set, get) => ({
       )
     }));
     await get().saveData();
+  },
+
+  // ============================================
+  // ICLOUD SYNC OPERATIONS
+  // ============================================
+
+  // Toggle sync enabled
+  toggleSyncEnabled: async () => {
+    const { syncEnabled, iCloudAvailable } = get();
+    
+    if (!iCloudAvailable) {
+      set({ syncError: 'iCloud is not available. Please sign in to iCloud in System Settings.' });
+      return;
+    }
+    
+    const newSyncEnabled = !syncEnabled;
+    set({ syncEnabled: newSyncEnabled, syncError: null });
+    
+    // Save the preference
+    await get().saveData();
+    
+    // If enabling sync, perform initial sync
+    if (newSyncEnabled) {
+      await get().performSync();
+    }
+  },
+
+  // Perform sync with iCloud
+  performSync: async () => {
+    const { syncEnabled, iCloudAvailable, boards, activeBoard, theme, bookmarks, collections, customTags, notes, activeView, lastModified } = get();
+    
+    if (!syncEnabled || !iCloudAvailable) {
+      return;
+    }
+    
+    set({ syncStatus: 'syncing', syncError: null });
+    
+    try {
+      const data = {
+        boards,
+        activeBoard,
+        theme,
+        bookmarks,
+        collections,
+        customTags,
+        notes,
+        activeView,
+        lastModified,
+        syncEnabled
+      };
+      
+      const result = await api.syncToCloud(data);
+      
+      if (result.success) {
+        if (result.shouldUpdateLocal && result.data) {
+          // Remote data is newer, update local state
+          try {
+            const remoteData = JSON.parse(result.data);
+            
+            // Merge custom tags
+            const remoteTags = remoteData.customTags || {};
+            BOOKMARK_TAGS = { ...DEFAULT_BOOKMARK_TAGS, ...remoteTags };
+            
+            set({
+              boards: remoteData.boards || [],
+              activeBoard: remoteData.activeBoard,
+              theme: remoteData.theme || 'dark',
+              bookmarks: remoteData.bookmarks || [],
+              collections: remoteData.collections || get().collections,
+              customTags: remoteTags,
+              notes: remoteData.notes || [],
+              activeView: remoteData.activeView || 'boards',
+              lastModified: result.remoteLastModified || remoteData.lastModified,
+              syncStatus: 'synced',
+              syncError: null
+            });
+            
+            // Apply theme
+            document.documentElement.classList.toggle('dark', remoteData.theme === 'dark');
+            document.documentElement.classList.toggle('light', remoteData.theme === 'light');
+            
+            // Save the merged data locally
+            await api.writeData({
+              ...remoteData,
+              syncEnabled: true
+            });
+          } catch (parseError) {
+            console.error('Failed to parse remote data:', parseError);
+            set({ syncStatus: 'error', syncError: 'Failed to parse remote data' });
+          }
+        } else {
+          set({ syncStatus: 'synced', syncError: null });
+        }
+      } else {
+        set({ syncStatus: 'error', syncError: result.error || 'Sync failed' });
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      set({ syncStatus: 'error', syncError: error.message || 'Sync failed' });
+    }
+  },
+
+  // Pull data from iCloud (manual refresh)
+  pullFromCloud: async () => {
+    const { iCloudAvailable } = get();
+    
+    if (!iCloudAvailable) {
+      set({ syncError: 'iCloud is not available' });
+      return;
+    }
+    
+    set({ syncStatus: 'syncing', syncError: null });
+    
+    try {
+      const result = await api.syncFromCloud();
+      
+      if (result.success && result.data) {
+        const remoteData = JSON.parse(result.data);
+        
+        // Merge custom tags
+        const remoteTags = remoteData.customTags || {};
+        BOOKMARK_TAGS = { ...DEFAULT_BOOKMARK_TAGS, ...remoteTags };
+        
+        set({
+          boards: remoteData.boards || [],
+          activeBoard: remoteData.activeBoard,
+          theme: remoteData.theme || 'dark',
+          bookmarks: remoteData.bookmarks || [],
+          collections: remoteData.collections || get().collections,
+          customTags: remoteTags,
+          notes: remoteData.notes || [],
+          activeView: remoteData.activeView || 'boards',
+          lastModified: result.remoteLastModified || remoteData.lastModified,
+          syncStatus: 'synced',
+          syncError: null
+        });
+        
+        // Apply theme
+        document.documentElement.classList.toggle('dark', remoteData.theme === 'dark');
+        document.documentElement.classList.toggle('light', remoteData.theme === 'light');
+        
+        // Save locally
+        await api.writeData({
+          ...remoteData,
+          syncEnabled: true
+        });
+      } else if (result.success) {
+        // No data in cloud yet
+        set({ syncStatus: 'synced', syncError: null });
+      } else {
+        set({ syncStatus: 'error', syncError: result.error || 'Pull failed' });
+      }
+    } catch (error) {
+      console.error('Pull error:', error);
+      set({ syncStatus: 'error', syncError: error.message || 'Pull failed' });
+    }
+  },
+
+  // Get sync status info
+  getSyncInfo: () => {
+    const { syncEnabled, syncStatus, syncError, lastModified, iCloudAvailable } = get();
+    return {
+      enabled: syncEnabled,
+      status: syncStatus,
+      error: syncError,
+      lastModified,
+      available: iCloudAvailable
+    };
+  },
+
+  // Check iCloud availability
+  checkiCloudAvailability: async () => {
+    if (isTauri() && isMacOS()) {
+      try {
+        const available = await api.checkiCloudAccount();
+        set({ iCloudAvailable: available });
+        return available;
+      } catch (e) {
+        console.error('Failed to check iCloud:', e);
+        set({ iCloudAvailable: false });
+        return false;
+      }
+    }
+    set({ iCloudAvailable: false });
+    return false;
   },
 }));

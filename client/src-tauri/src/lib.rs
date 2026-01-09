@@ -4,6 +4,13 @@ use std::path::PathBuf;
 use tauri::Manager;
 use tauri_plugin_updater::UpdaterExt;
 
+// CloudKit module for iCloud sync (macOS only)
+#[cfg(target_os = "macos")]
+mod cloudkit;
+
+#[cfg(target_os = "macos")]
+use cloudkit::{CloudKit, SyncResultJson, SyncStatusJson};
+
 // Data structures matching the JavaScript types
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChecklistItem {
@@ -101,6 +108,16 @@ pub struct AppData {
     pub collections: Vec<Collection>,
     #[serde(rename = "customTags", default)]
     pub custom_tags: std::collections::HashMap<String, CustomTag>,
+    /// Last modified timestamp for sync conflict resolution (ISO 8601)
+    #[serde(rename = "lastModified", default = "default_last_modified")]
+    pub last_modified: String,
+    /// Whether iCloud sync is enabled
+    #[serde(rename = "syncEnabled", default)]
+    pub sync_enabled: bool,
+}
+
+fn default_last_modified() -> String {
+    chrono::Utc::now().to_rfc3339()
 }
 
 fn default_theme() -> String {
@@ -196,6 +213,8 @@ fn get_default_data() -> AppData {
         bookmarks: vec![],
         collections: default_collections(),
         custom_tags: std::collections::HashMap::new(),
+        last_modified: chrono::Utc::now().to_rfc3339(),
+        sync_enabled: false,
     }
 }
 
@@ -347,6 +366,147 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
     }
 }
 
+// ============================================
+// CLOUDKIT SYNC COMMANDS (macOS only)
+// ============================================
+
+/// Check if iCloud account is available
+#[tauri::command]
+#[cfg(target_os = "macos")]
+fn check_icloud_account() -> bool {
+    CloudKit::check_account()
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn check_icloud_account() -> bool {
+    false
+}
+
+/// Get current sync status
+#[tauri::command]
+#[cfg(target_os = "macos")]
+fn get_sync_status() -> SyncStatusJson {
+    CloudKit::get_status().into()
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn get_sync_status() -> serde_json::Value {
+    serde_json::json!({
+        "status": "offline",
+        "error": "CloudKit is only available on macOS"
+    })
+}
+
+/// Sync data with iCloud - performs bidirectional sync with last-write-wins conflict resolution
+#[tauri::command]
+#[cfg(target_os = "macos")]
+fn sync_to_cloud(data: AppData) -> Result<SyncResultJson, String> {
+    log::info!("Starting iCloud sync...");
+    
+    // Serialize the data to JSON
+    let json_data = serde_json::to_string(&data)
+        .map_err(|e| format!("Failed to serialize data: {}", e))?;
+    
+    // Perform sync
+    let result = CloudKit::sync(&json_data, &data.last_modified);
+    
+    if result.success {
+        log::info!("iCloud sync completed successfully");
+        
+        // If we need to update local data, the frontend will handle it
+        if result.should_update_local {
+            log::info!("Remote data is newer, frontend should update local data");
+        }
+    } else {
+        log::error!("iCloud sync failed: {:?}", result.error);
+    }
+    
+    Ok(result.into())
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn sync_to_cloud(_data: AppData) -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({
+        "success": false,
+        "shouldUpdateLocal": false,
+        "error": "CloudKit is only available on macOS",
+        "data": null,
+        "remoteLastModified": null
+    }))
+}
+
+/// Pull data from iCloud
+#[tauri::command]
+#[cfg(target_os = "macos")]
+fn sync_from_cloud() -> Result<SyncResultJson, String> {
+    log::info!("Pulling data from iCloud...");
+    
+    let result = CloudKit::pull();
+    
+    if result.success {
+        log::info!("Successfully pulled data from iCloud");
+    } else {
+        log::error!("Failed to pull from iCloud: {:?}", result.error);
+    }
+    
+    Ok(result.into())
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn sync_from_cloud() -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({
+        "success": false,
+        "shouldUpdateLocal": false,
+        "error": "CloudKit is only available on macOS",
+        "data": null,
+        "remoteLastModified": null
+    }))
+}
+
+/// Initialize CloudKit and setup subscriptions
+#[tauri::command]
+#[cfg(target_os = "macos")]
+fn init_cloudkit() -> bool {
+    log::info!("Initializing CloudKit...");
+    
+    if !CloudKit::init() {
+        log::error!("Failed to initialize CloudKit");
+        return false;
+    }
+    
+    if !CloudKit::setup_subscriptions() {
+        log::warn!("Failed to setup CloudKit subscriptions");
+        // Don't fail completely, subscriptions are optional
+    }
+    
+    log::info!("CloudKit initialized successfully");
+    true
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn init_cloudkit() -> bool {
+    false
+}
+
+/// Delete all data from iCloud (for testing/reset purposes)
+#[tauri::command]
+#[cfg(target_os = "macos")]
+fn delete_cloud_data() -> bool {
+    log::info!("Deleting data from iCloud...");
+    CloudKit::delete_data()
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn delete_cloud_data() -> bool {
+    false
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -368,6 +528,17 @@ pub fn run() {
             // Log the data directory location
             log::info!("Data directory: {:?}", get_data_dir());
             
+            // Initialize CloudKit on macOS
+            #[cfg(target_os = "macos")]
+            {
+                log::info!("Initializing CloudKit for iCloud sync...");
+                if CloudKit::init() {
+                    log::info!("CloudKit initialized successfully");
+                } else {
+                    log::warn!("CloudKit initialization failed - iCloud sync will be unavailable");
+                }
+            }
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -375,7 +546,14 @@ pub fn run() {
             write_data, 
             get_data_path,
             check_for_updates,
-            install_update
+            install_update,
+            // CloudKit sync commands
+            check_icloud_account,
+            get_sync_status,
+            sync_to_cloud,
+            sync_from_cloud,
+            init_cloudkit,
+            delete_cloud_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

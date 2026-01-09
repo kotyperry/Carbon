@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Carbon",
-  "version": "1.0.29",
+  "version": "1.1.0",
   "identifier": "com.carbon.app",
   "build": {
     "frontendDist": "../dist",
@@ -48,8 +48,9 @@
     "shortDescription": "A beautiful project and resource management workspace",
     "longDescription": "Carbon is a beautiful, local-first workspace for managing your projects, tasks, and resources. Features include multiple boards, drag-and-drop cards, labels, priorities, checklists, and bookmarks.",
     "macOS": {
-      "signingIdentity": "-",
-      "minimumSystemVersion": "10.15"
+      "signingIdentity": "Apple Development: Dakota Perry (D9752DEB9W)",
+      "minimumSystemVersion": "12.0",
+      "entitlements": "./Entitlements.plist"
     },
     "createUpdaterArtifacts": true
   },

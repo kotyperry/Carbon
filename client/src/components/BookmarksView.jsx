@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useBoardStore } from '../store/boardStore';
 import BookmarkCard from './BookmarkCard';
 import AddBookmarkModal from './AddBookmarkModal';
+import SyncStatus from './SyncStatus';
 
 function BookmarksView({ onMenuClick }) {
   const { 
@@ -67,6 +68,9 @@ function BookmarksView({ onMenuClick }) {
             {bookmarks.length} bookmark{bookmarks.length !== 1 ? 's' : ''}
           </p>
         </div>
+
+        {/* iCloud Sync Status */}
+        <SyncStatus />
       </header>
 
       {/* Content Area */}
