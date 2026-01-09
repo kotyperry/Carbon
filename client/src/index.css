@@ -93,12 +93,10 @@ select:focus {
   box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
 }
 
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
+/* 
+ * Note: Global transitions removed to improve theme toggle performance.
+ * Use Tailwind's transition-* utilities on specific elements instead.
+ */
 
 /* Prevent transition on drag */
 .dragging * {
