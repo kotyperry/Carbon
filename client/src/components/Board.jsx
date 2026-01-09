@@ -389,25 +389,24 @@ function Board({ onMenuClick }) {
             onDragEnd={handleDragEnd}
           >
             {/* 
-              Responsive CSS Grid layout for Kanban columns:
-              - Columns wrap to new rows when viewport is too narrow
-              - Minimum column width of 288px, grows to fill available space
-              - Masonry-like behavior with auto-fill
+              CSS Columns masonry layout for Kanban columns:
+              - True masonry behavior where items stack vertically
+              - Add Column button appears below shortest column
             */}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(288px,1fr))] gap-4 pb-4 items-start">
+            <div className="masonry-grid pb-4">
               <SortableContext
                 items={board.columns.map(c => c.id)}
                 strategy={rectSortingStrategy}
               >
                 {board.columns.map((column) => (
-                  <div key={column.id}>
+                  <div key={column.id} className="masonry-item">
                     <Column column={column} />
                   </div>
                 ))}
               </SortableContext>
 
               {/* Add Column Button */}
-              <div>
+              <div className="masonry-item">
                 {isAddingColumn ? (
                   <form
                     onSubmit={handleAddColumn}

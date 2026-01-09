@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useBoardStore } from '../store/boardStore';
 
-function CardContextMenu({ card, position, onClose }) {
-  const { theme } = useBoardStore();
+function CardContextMenu({ card, columnId, position, onClose }) {
+  const { theme, clearCompletedChecklistItems } = useBoardStore();
   const [copied, setCopied] = useState(false);
+  const [cleared, setCleared] = useState(false);
   const menuRef = useRef(null);
 
   const checklist = card.checklist || [];
+  const completedCount = checklist.filter(item => item.completed).length;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -127,6 +129,53 @@ function CardContextMenu({ card, position, onClose }) {
               {checklist.length === 0 && (
                 <span className={`ml-auto text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
                   Empty
+                </span>
+              )}
+            </>
+          )}
+        </button>
+
+        {/* Clear Completed Option */}
+        <button
+          onClick={async () => {
+            if (completedCount === 0) return;
+            await clearCompletedChecklistItems(columnId, card.id);
+            setCleared(true);
+            setTimeout(() => {
+              setCleared(false);
+              onClose();
+            }, 1000);
+          }}
+          disabled={completedCount === 0}
+          className={`
+            w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors
+            ${completedCount === 0
+              ? theme === 'dark' ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 cursor-not-allowed'
+              : theme === 'dark' 
+                ? 'text-gray-300 hover:bg-charcoal-700' 
+                : 'text-gray-700 hover:bg-gray-100'}
+          `}
+        >
+          {cleared ? (
+            <>
+              <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-emerald-500">Cleared!</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Clear Completed</span>
+              {completedCount > 0 ? (
+                <span className={`ml-auto text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {completedCount}
+                </span>
+              ) : (
+                <span className={`ml-auto text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                  None
                 </span>
               )}
             </>

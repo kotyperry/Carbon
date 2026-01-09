@@ -138,8 +138,10 @@ function CardModal({ card, columnId, onClose }) {
                 }}
                 autoFocus
                 className={`
-                  flex-1 px-2 py-1 rounded font-mono text-lg font-semibold bg-transparent border
-                  ${theme === 'dark' ? 'border-charcoal-600' : 'border-gray-300'}
+                  flex-1 px-2 py-1 rounded font-mono text-lg font-semibold border
+                  ${theme === 'dark' 
+                    ? 'bg-charcoal-700 border-charcoal-600 text-white' 
+                    : 'bg-white border-gray-300 text-gray-900'}
                 `}
               />
             ) : (

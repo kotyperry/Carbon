@@ -193,6 +193,7 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
       {contextMenu && (
         <CardContextMenu
           card={card}
+          columnId={columnId}
           position={contextMenu}
           onClose={() => setContextMenu(null)}
         />

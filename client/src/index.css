@@ -377,3 +377,39 @@ button, [role="button"] {
 .animate-slide-up {
   animation: slideUp 0.3s ease-out forwards;
 }
+
+/* Masonry grid layout for Kanban columns */
+.masonry-grid {
+  column-count: 1;
+  column-gap: 1rem;
+}
+
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 1rem;
+}
+
+/* Responsive column counts based on viewport width */
+@media (min-width: 640px) {
+  .masonry-grid {
+    column-count: 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .masonry-grid {
+    column-count: 3;
+  }
+}
+
+@media (min-width: 1280px) {
+  .masonry-grid {
+    column-count: 4;
+  }
+}
+
+@media (min-width: 1536px) {
+  .masonry-grid {
+    column-count: 5;
+  }
+}

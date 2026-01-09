@@ -271,10 +271,20 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, String> 
     
     match updater.check().await {
         Ok(Some(update)) => {
+            // Filter out the "See the assets below" text from the release body
+            let filtered_body = update.body.clone().map(|body| {
+                body.lines()
+                    .filter(|line| !line.trim().starts_with("See the assets below"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+                    .trim()
+                    .to_string()
+            }).filter(|s| !s.is_empty());
+            
             Ok(UpdateInfo {
                 available: true,
                 version: Some(update.version.clone()),
-                body: update.body.clone(),
+                body: filtered_body,
             })
         }
         Ok(None) => {
