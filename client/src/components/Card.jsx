@@ -114,9 +114,9 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
               />
             </div>
             
-            {/* Checklist Items - show up to 4 */}
-            <div className="space-y-0.5 pt-1">
-              {checklist.slice(0, 4).map(item => (
+            {/* Checklist Items - show all items with max height and scroll */}
+            <div className="space-y-0.5 pt-1 max-h-32 overflow-y-auto">
+              {checklist.map(item => (
                 <div
                   key={item.id}
                   className={`flex items-center gap-2 py-0.5 group`}
@@ -149,11 +149,6 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
                   </span>
                 </div>
               ))}
-              {totalCount > 4 && (
-                <div className={`text-[10px] font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  +{totalCount - 4} more items
-                </div>
-              )}
             </div>
           </div>
         )}

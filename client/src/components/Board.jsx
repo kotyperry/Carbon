@@ -379,8 +379,8 @@ function Board({ onMenuClick }) {
           </div>
         </div>
       ) : (
-        /* Columns Container - Masonry Layout */
-        <div className="flex-1 overflow-auto p-4 sm:p-6">
+        /* Columns Container - Horizontal Scroll Layout */
+        <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -389,33 +389,25 @@ function Board({ onMenuClick }) {
             onDragEnd={handleDragEnd}
           >
             {/* 
-              Masonry-style layout using CSS columns:
-              - Items flow top-to-bottom, then wrap to next column
-              - Add Column button stacks directly under shorter columns
-              - Responsive column count based on viewport
+              Horizontal flexbox layout for Kanban columns:
+              - Columns align at the top (items-start)
+              - Horizontal scroll when columns exceed viewport
+              - Fixed column widths for consistent appearance
             */}
-            <div className="
-              columns-1
-              sm:columns-2
-              lg:columns-3
-              xl:columns-4
-              gap-4
-              pb-4
-              [column-fill:balance]
-            ">
+            <div className="flex items-start gap-4 pb-4 min-h-full">
               <SortableContext
                 items={board.columns.map(c => c.id)}
                 strategy={rectSortingStrategy}
               >
                 {board.columns.map((column) => (
-                  <div key={column.id} className="break-inside-avoid mb-4">
+                  <div key={column.id} className="flex-shrink-0 w-72 sm:w-80">
                     <Column column={column} />
                   </div>
                 ))}
               </SortableContext>
 
               {/* Add Column Button */}
-              <div className="break-inside-avoid mb-4">
+              <div className="flex-shrink-0 w-72 sm:w-80">
                 {isAddingColumn ? (
                   <form
                     onSubmit={handleAddColumn}

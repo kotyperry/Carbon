@@ -674,6 +674,21 @@ export const useBoardStore = create((set, get) => ({
     await get().saveData();
   },
 
+  // Reorder boards in sidebar
+  reorderBoards: async (boardId, newIndex) => {
+    set(state => {
+      const boards = [...state.boards];
+      const oldIndex = boards.findIndex(b => b.id === boardId);
+      if (oldIndex === -1) return state;
+
+      const [board] = boards.splice(oldIndex, 1);
+      boards.splice(newIndex, 0, board);
+
+      return { boards };
+    });
+    await get().saveData();
+  },
+
   // Theme
   toggleTheme: async () => {
     set(state => {

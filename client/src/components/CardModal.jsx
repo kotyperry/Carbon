@@ -22,6 +22,7 @@ function CardModal({ card, columnId, onClose }) {
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  const [copiedChecklist, setCopiedChecklist] = useState(false);
 
   // Close on escape key
   useEffect(() => {
@@ -63,6 +64,23 @@ function CardModal({ card, columnId, onClose }) {
     if (newChecklistItem.trim()) {
       await addChecklistItem(columnId, card.id, newChecklistItem.trim());
       setNewChecklistItem('');
+    }
+  };
+
+  // Copy checklist to clipboard
+  const handleCopyChecklist = async () => {
+    const checklistText = checklist
+      .map(item => `${item.completed ? '✓' : '○'} ${item.text}`)
+      .join('\n');
+    
+    const fullText = `${card.title}\n${'─'.repeat(card.title.length)}\n${checklistText}`;
+    
+    try {
+      await navigator.clipboard.writeText(fullText);
+      setCopiedChecklist(true);
+      setTimeout(() => setCopiedChecklist(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy checklist:', err);
     }
   };
 
@@ -328,9 +346,41 @@ function CardModal({ card, columnId, onClose }) {
 
           {/* Checklist */}
           <div>
-            <label className={`block text-xs font-mono uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              Checklist {totalCount > 0 && `(${completedCount}/${totalCount})`}
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className={`text-xs font-mono uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                Checklist {totalCount > 0 && `(${completedCount}/${totalCount})`}
+              </label>
+              {totalCount > 0 && (
+                <button
+                  onClick={handleCopyChecklist}
+                  className={`
+                    flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-colors
+                    ${copiedChecklist 
+                      ? 'bg-emerald-500/20 text-emerald-400' 
+                      : theme === 'dark' 
+                        ? 'text-gray-400 hover:bg-charcoal-700 hover:text-white' 
+                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}
+                  `}
+                  title="Copy checklist to clipboard"
+                >
+                  {copiedChecklist ? (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
             
             {/* Progress Bar */}
             {totalCount > 0 && (

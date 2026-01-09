@@ -10,6 +10,7 @@ import UpdateNotification from './components/UpdateNotification';
 function App() {
   const { fetchData, isLoading, error, theme, activeView } = useBoardStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -60,7 +61,7 @@ function App() {
   return (
     <div className={`min-h-screen flex ${theme === 'dark' ? 'bg-charcoal-900 text-white' : 'bg-gray-50 text-gray-900'} noise-bg`}>
       {/* Titlebar drag region for Tauri */}
-      <TitlebarDragRegion />
+      <TitlebarDragRegion sidebarCollapsed={sidebarCollapsed} />
 
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -71,7 +72,11 @@ function App() {
       )}
 
       {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+        onCollapsedChange={setSidebarCollapsed}
+      />
 
       {/* Main content */}
       <main className="flex-1 overflow-hidden flex flex-col">

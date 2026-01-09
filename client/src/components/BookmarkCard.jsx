@@ -78,12 +78,23 @@ function BookmarkCard({ bookmark, onEdit }) {
       onClick={handleOpenLink}
       className={`
         group p-3 rounded-lg cursor-pointer
-        transition-all animate-fade-in
+        transition-all animate-fade-in relative
+        hover:scale-[1.02] hover:-translate-y-0.5
         ${theme === 'dark'
-          ? 'bg-charcoal-600 hover:bg-charcoal-500 border border-charcoal-500 shadow-lg shadow-black/20'
-          : 'bg-white hover:bg-gray-50 border border-gray-200 shadow-sm'}
+          ? 'bg-charcoal-600 hover:bg-charcoal-500 border border-charcoal-500 shadow-lg shadow-black/20 hover:border-cyber-cyan/50 hover:shadow-cyber-cyan/10'
+          : 'bg-white hover:bg-gray-50 border border-gray-200 shadow-sm hover:border-cyber-cyan/50 hover:shadow-lg'}
       `}
     >
+      {/* External link indicator - shows on hover */}
+      <div className={`
+        absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity
+        ${theme === 'dark' ? 'text-cyber-cyan' : 'text-cyber-cyan'}
+      `}>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </div>
+
       {/* Tags */}
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">

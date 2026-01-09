@@ -1,10 +1,128 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { getVersion } from '@tauri-apps/api/app';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useBoardStore, DEFAULT_BOOKMARK_TAGS } from '../store/boardStore';
 import TagContextMenu from './TagContextMenu';
 
-function Sidebar({ isOpen, onClose }) {
+// Sortable Board Item Component
+function SortableBoardItem({ board, isActive, theme, activeView, onSelect, onEdit, onDelete, boardsLength, editingId, editName, setEditName, handleSaveEdit, setEditingId }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: board.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={() => onSelect(board.id)}
+      className={`
+        group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
+        ${isActive && activeView === 'boards'
+          ? 'bg-cyber-cyan/20 text-cyber-cyan'
+          : theme === 'dark'
+            ? 'hover:bg-charcoal-700 text-gray-300'
+            : 'hover:bg-gray-100 text-gray-700'
+        }
+      `}
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className={`cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded ${theme === 'dark' ? 'hover:bg-charcoal-600' : 'hover:bg-gray-200'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <svg className="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM14 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM14 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM14 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
+        </svg>
+      </div>
+
+      {/* Board Icon */}
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+      </svg>
+
+      {editingId === board.id ? (
+        <input
+          type="text"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          onBlur={() => handleSaveEdit(board.id)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSaveEdit(board.id);
+            if (e.key === 'Escape') setEditingId(null);
+          }}
+          autoFocus
+          className={`
+            flex-1 px-2 py-0.5 rounded text-sm bg-transparent border
+            ${theme === 'dark' ? 'border-charcoal-600' : 'border-gray-300'}
+          `}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <span className="flex-1 text-sm truncate">{board.name}</span>
+      )}
+
+      {/* Actions */}
+      {editingId !== board.id && (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(board);
+            }}
+            className="p-1 rounded hover:bg-white/10"
+            title="Rename board"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+          {boardsLength > 1 && (
+            <button
+              onClick={(e) => onDelete(board.id, e)}
+              className="p-1 rounded hover:bg-red-500/20 text-red-400"
+              title="Delete board"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Sidebar({ isOpen, onClose, onCollapsedChange }) {
   const {
     boards,
     activeBoard,
@@ -12,6 +130,7 @@ function Sidebar({ isOpen, onClose }) {
     createBoard,
     deleteBoard,
     updateBoard,
+    reorderBoards,
     theme,
     toggleTheme,
     // Bookmark state
@@ -45,9 +164,37 @@ function Sidebar({ isOpen, onClose }) {
   const stats = getBookmarkStats();
   const [appVersion, setAppVersion] = useState('');
 
+  // DnD sensors for board reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => setAppVersion('dev'));
   }, []);
+
+  // Notify parent when collapsed state changes
+  useEffect(() => {
+    onCollapsedChange?.(isCollapsed);
+  }, [isCollapsed, onCollapsedChange]);
+
+  // Handle board drag end
+  const handleBoardDragEnd = (event) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = boards.findIndex(b => b.id === active.id);
+      const newIndex = boards.findIndex(b => b.id === over.id);
+      reorderBoards(active.id, newIndex);
+    }
+  };
 
   const handleCreateBoard = async (e) => {
     e.preventDefault();
@@ -167,7 +314,7 @@ function Sidebar({ isOpen, onClose }) {
   const sidebar = (
     <aside
       className={`
-        ${isCollapsed ? 'lg:w-16' : 'lg:w-72'}
+        ${isCollapsed ? 'lg:w-20' : 'lg:w-72'}
         ${theme === 'dark' ? 'bg-charcoal-800 border-charcoal-700' : 'bg-white border-gray-200'}
         border-r flex flex-col transition-all duration-300 z-30
         
@@ -180,8 +327,8 @@ function Sidebar({ isOpen, onClose }) {
       `}
     >
       {/* Header - with padding for macOS traffic lights */}
-      <div className={`p-4 pt-10 border-b ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
-        <div className="flex items-center justify-between">
+      <div className={`p-4 pt-10 border-b ${isCollapsed ? 'lg:px-3 lg:flex lg:justify-center' : ''} ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
+        <div className={`flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
           {(!isCollapsed || window.innerWidth < 1024) && (
             <div className="flex items-center gap-2">
               <svg className="w-7 h-7" viewBox="0 0 100 100">
@@ -348,79 +495,38 @@ function Sidebar({ isOpen, onClose }) {
                   </form>
                 )}
 
-                {/* Board Items */}
-                <div className="space-y-1">
-                  {boards.map((board) => (
-                    <div
-                      key={board.id}
-                      onClick={() => handleBoardSelect(board.id)}
-                      className={`
-                        group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
-                        ${activeBoard === board.id && activeView === 'boards'
-                          ? 'bg-cyber-cyan/20 text-cyber-cyan'
-                          : theme === 'dark'
-                            ? 'hover:bg-charcoal-700 text-gray-300'
-                            : 'hover:bg-gray-100 text-gray-700'
-                        }
-                      `}
-                    >
-                      {/* Board Icon */}
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                      </svg>
-
-                      {editingId === board.id ? (
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onBlur={() => handleSaveEdit(board.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveEdit(board.id);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          autoFocus
-                          className={`
-                            flex-1 px-2 py-0.5 rounded text-sm bg-transparent border
-                            ${theme === 'dark' ? 'border-charcoal-600' : 'border-gray-300'}
-                          `}
-                          onClick={(e) => e.stopPropagation()}
+                {/* Board Items - Sortable */}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleBoardDragEnd}
+                >
+                  <SortableContext
+                    items={boards.map(b => b.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-1">
+                      {boards.map((board) => (
+                        <SortableBoardItem
+                          key={board.id}
+                          board={board}
+                          isActive={activeBoard === board.id}
+                          theme={theme}
+                          activeView={activeView}
+                          onSelect={handleBoardSelect}
+                          onEdit={handleStartEdit}
+                          onDelete={handleDeleteBoard}
+                          boardsLength={boards.length}
+                          editingId={editingId}
+                          editName={editName}
+                          setEditName={setEditName}
+                          handleSaveEdit={handleSaveEdit}
+                          setEditingId={setEditingId}
                         />
-                      ) : (
-                        <span className="flex-1 text-sm truncate">{board.name}</span>
-                      )}
-
-                      {/* Actions */}
-                      {editingId !== board.id && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartEdit(board);
-                            }}
-                            className="p-1 rounded hover:bg-white/10"
-                            title="Rename board"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
-                          {boards.length > 1 && (
-                            <button
-                              onClick={(e) => handleDeleteBoard(board.id, e)}
-                              className="p-1 rounded hover:bg-red-500/20 text-red-400"
-                              title="Delete board"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               </div>
             )}
 

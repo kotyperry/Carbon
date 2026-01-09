@@ -155,7 +155,7 @@ function Column({ column, isDragging }) {
       </div>
 
       {/* Cards Container */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[300px] sm:max-h-[400px] lg:max-h-none">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[60vh]">
         <SortableContext
           items={column.cards.map(c => c.id)}
           strategy={verticalListSortingStrategy}
