@@ -161,4 +161,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: r2 object put carbon-updates/latest.json --file=latest.json --content-type=application/json
+          command: r2 object put updates/latest.json --file=latest.json --content-type=application/json
