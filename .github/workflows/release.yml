@@ -17,10 +17,9 @@ permissions:
   contents: write
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
+  build-and-release:
+    runs-on: macos-latest
     outputs:
-      release_id: ${{ steps.create-release.outputs.id }}
       version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Checkout repository
@@ -31,25 +30,6 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' client/src-tauri/tauri.conf.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        id: create-release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.get-version.outputs.version }}
-          name: Carbon v${{ steps.get-version.outputs.version }}
-          draft: true
-          prerelease: false
-          generate_release_notes: true
-
-  build-macos:
-    needs: create-release
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -94,7 +74,7 @@ jobs:
           # Allow codesign to access the certificate
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-      - name: Build Tauri app
+      - name: Build and Release Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -108,25 +88,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: client
-          releaseId: ${{ needs.create-release.outputs.release_id }}
+          tagName: v${{ steps.get-version.outputs.version }}
+          releaseName: "Carbon v${{ steps.get-version.outputs.version }}"
+          releaseBody: "See the assets below to download and install this version."
+          releaseDraft: false
+          prerelease: false
           args: --target universal-apple-darwin
 
-  publish-release:
-    needs: [create-release, build-macos]
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ needs.create-release.outputs.version }}
-    steps:
-      - name: Publish release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ needs.create-release.outputs.version }}
-          draft: false
-
   deploy-update-manifest:
-    needs: [create-release, publish-release]
+    needs: build-and-release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -136,9 +106,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="v${{ needs.create-release.outputs.version }}"
+          VERSION="v${{ needs.build-and-release.outputs.version }}"
           echo "Looking for release: $VERSION"
-          
+
           # Retry loop - assets may take time to be available
           for i in {1..6}; do
             echo "Attempt $i: Fetching release info..."
@@ -161,7 +131,7 @@ jobs:
             echo "Asset not found yet, waiting 15 seconds..."
             sleep 15
           done
-          
+
           if [ -z "$ASSET_URL" ] || [ "$ASSET_URL" == "null" ]; then
             echo "ERROR: Could not find latest.json asset after multiple attempts"
             exit 1
@@ -177,13 +147,13 @@ jobs:
 
           echo "Contents of latest.json:"
           cat latest.json
-          
+
           # Validate JSON
           if ! jq empty latest.json 2>/dev/null; then
             echo "ERROR: Downloaded file is not valid JSON"
             exit 1
           fi
-          
+
           echo "Successfully downloaded latest.json"
 
       - name: Upload to Cloudflare R2
