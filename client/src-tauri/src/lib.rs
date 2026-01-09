@@ -293,10 +293,20 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, String> 
 
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    let updater = app.updater().map_err(|e| e.to_string())?;
+    log::info!("Starting update installation...");
+    
+    let updater = app.updater().map_err(|e| {
+        log::error!("Failed to get updater: {}", e);
+        format!("Updater initialization failed: {}", e)
+    })?;
+    
+    log::info!("Checking for available update...");
     
     match updater.check().await {
         Ok(Some(update)) => {
+            log::info!("Update found: version {}", update.version);
+            log::info!("Download URL: {:?}", update.download_url);
+            
             // Download and install the update
             let mut downloaded = 0;
             
@@ -308,15 +318,21 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
                 || {
                     log::info!("Download finished, preparing to install...");
                 },
-            ).await.map_err(|e| e.to_string())?;
+            ).await.map_err(|e| {
+                log::error!("Download/install failed: {}", e);
+                format!("Download failed: {}", e)
+            })?;
             
+            log::info!("Update installed successfully");
             Ok(())
         }
         Ok(None) => {
+            log::warn!("No update available when trying to install");
             Err("No update available".to_string())
         }
         Err(e) => {
-            Err(format!("Failed to install update: {}", e))
+            log::error!("Update check failed during install: {}", e);
+            Err(format!("Update check failed: {}", e))
         }
     }
 }
@@ -327,13 +343,16 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            // Enable logging in both debug and release builds for troubleshooting
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(if cfg!(debug_assertions) {
+                        log::LevelFilter::Debug
+                    } else {
+                        log::LevelFilter::Info
+                    })
+                    .build(),
+            )?;
             
             // Log the data directory location
             log::info!("Data directory: {:?}", get_data_dir());

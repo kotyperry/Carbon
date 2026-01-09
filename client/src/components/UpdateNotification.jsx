@@ -59,7 +59,9 @@ function UpdateNotification() {
       await relaunch();
     } catch (err) {
       console.error('Failed to install update:', err);
-      setError('Failed to download update. Please try again.');
+      // Show the actual error message for debugging
+      const errorMessage = typeof err === 'string' ? err : err?.message || 'Unknown error';
+      setError(`Failed to download update: ${errorMessage}`);
       setIsDownloading(false);
     }
   };
