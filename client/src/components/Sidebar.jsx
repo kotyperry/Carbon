@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { getVersion } from '@tauri-apps/api/app';
 import { useBoardStore, DEFAULT_BOOKMARK_TAGS } from '../store/boardStore';
 import TagContextMenu from './TagContextMenu';
 
@@ -42,6 +43,11 @@ function Sidebar({ isOpen, onClose }) {
 
   const allTags = getAllTags();
   const stats = getBookmarkStats();
+  const [appVersion, setAppVersion] = useState('');
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => setAppVersion('dev'));
+  }, []);
 
   const handleCreateBoard = async (e) => {
     e.preventDefault();
@@ -580,7 +586,7 @@ function Sidebar({ isOpen, onClose }) {
         )}
       </div>
 
-      {/* Footer - Theme Toggle */}
+      {/* Footer - Theme Toggle & Version */}
       <div className={`p-4 border-t ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
         <button
           onClick={toggleTheme}
@@ -605,6 +611,12 @@ function Sidebar({ isOpen, onClose }) {
             </span>
           )}
         </button>
+        {/* Version */}
+        {(!isCollapsed || window.innerWidth < 1024) && appVersion && (
+          <div className={`mt-3 text-center text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+            v{appVersion}
+          </div>
+        )}
       </div>
 
     </aside>
