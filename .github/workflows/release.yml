@@ -108,6 +108,7 @@ jobs:
           R2_BASE_URL: https://update.blkdog.dev
         run: |
           VERSION="v${{ needs.build-and-release.outputs.version }}"
+          VERSION_NUM="${{ needs.build-and-release.outputs.version }}"
           echo "Looking for release: $VERSION"
 
           # Retry loop - assets may take time to be available
@@ -166,9 +167,14 @@ jobs:
 
           echo "Downloaded app archive: $(ls -lh $APP_TAR_NAME)"
 
-          # Update latest.json to point to R2 URLs instead of GitHub
-          echo "Updating latest.json URLs to point to R2..."
-          jq --arg base_url "$R2_BASE_URL/carbon" --arg app_name "$APP_TAR_NAME" '
+          # Create versioned filename to avoid CDN caching issues
+          VERSIONED_APP_NAME="Carbon_${VERSION_NUM}_universal.app.tar.gz"
+          cp "$APP_TAR_NAME" "$VERSIONED_APP_NAME"
+          echo "Created versioned archive: $VERSIONED_APP_NAME"
+
+          # Update latest.json to point to R2 URLs with versioned filename
+          echo "Updating latest.json URLs to point to R2 with versioned filename..."
+          jq --arg base_url "$R2_BASE_URL/carbon" --arg app_name "$VERSIONED_APP_NAME" '
             .platforms |= with_entries(
               .value.url = "\($base_url)/\($app_name)"
             )
@@ -185,8 +191,8 @@ jobs:
             exit 1
           fi
 
-          # Save app tar name for next step
-          echo "APP_TAR_NAME=$APP_TAR_NAME" >> $GITHUB_ENV
+          # Save versioned app tar name for next step
+          echo "APP_TAR_NAME=$VERSIONED_APP_NAME" >> $GITHUB_ENV
 
           echo "Successfully prepared all assets for upload"
 
