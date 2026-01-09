@@ -112,8 +112,12 @@ export const useBoardStore = create((set, get) => ({
   bookmarkSearch: '',
   bookmarkSort: 'date', // 'date', 'title', 'domain'
   
+  // Notes state
+  notes: [],
+  noteSearch: '',
+  
   // View state
-  activeView: 'boards', // 'boards' or 'bookmarks'
+  activeView: 'boards', // 'boards', 'bookmarks', or 'notes'
 
   // Set active view
   setActiveView: (view) => {
@@ -147,6 +151,7 @@ export const useBoardStore = create((set, get) => ({
           { id: 'archive', name: 'Archive', icon: 'archive' },
         ],
         customTags: customTags,
+        notes: data.notes || [],
         activeView: data.activeView || 'boards',
         isLoading: false
       });
@@ -161,9 +166,9 @@ export const useBoardStore = create((set, get) => ({
 
   // Save all data to Tauri backend or HTTP API
   saveData: async () => {
-    const { boards, activeBoard, theme, bookmarks, collections, customTags, activeView } = get();
+    const { boards, activeBoard, theme, bookmarks, collections, customTags, notes, activeView } = get();
     try {
-      await api.writeData({ boards, activeBoard, theme, bookmarks, collections, customTags, activeView });
+      await api.writeData({ boards, activeBoard, theme, bookmarks, collections, customTags, notes, activeView });
     } catch (error) {
       console.error('Failed to save data:', error);
     }
@@ -977,6 +982,91 @@ export const useBoardStore = create((set, get) => ({
 
     set(state => ({
       customTags: { ...state.customTags, [tagKey]: updatedTag }
+    }));
+    await get().saveData();
+  },
+
+  // ============================================
+  // NOTES OPERATIONS
+  // ============================================
+
+  // Set note search
+  setNoteSearch: (search) => {
+    set({ noteSearch: search });
+  },
+
+  // Get filtered notes (pinned first, then by date)
+  getFilteredNotes: () => {
+    const { notes, noteSearch } = get();
+    
+    let filtered = [...notes];
+
+    // Filter by search
+    if (noteSearch) {
+      const search = noteSearch.toLowerCase();
+      filtered = filtered.filter(n => 
+        n.title?.toLowerCase().includes(search) ||
+        n.content?.toLowerCase().includes(search)
+      );
+    }
+
+    // Sort: pinned first, then by updatedAt date (newest first)
+    filtered.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    });
+
+    return filtered;
+  },
+
+  // Add note
+  addNote: async (noteData = {}) => {
+    const now = new Date().toISOString();
+    const newNote = {
+      id: uuidv4(),
+      title: noteData.title || 'Untitled Note',
+      content: noteData.content || '',
+      isPinned: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    set(state => ({
+      notes: [newNote, ...state.notes]
+    }));
+    await get().saveData();
+    return newNote;
+  },
+
+  // Update note
+  updateNote: async (noteId, updates) => {
+    set(state => ({
+      notes: state.notes.map(n =>
+        n.id === noteId 
+          ? { ...n, ...updates, updatedAt: new Date().toISOString() } 
+          : n
+      )
+    }));
+    await get().saveData();
+  },
+
+  // Delete note
+  deleteNote: async (noteId) => {
+    set(state => ({
+      notes: state.notes.filter(n => n.id !== noteId)
+    }));
+    await get().saveData();
+  },
+
+  // Toggle note pin
+  toggleNotePin: async (noteId) => {
+    set(state => ({
+      notes: state.notes.map(n =>
+        n.id === noteId 
+          ? { ...n, isPinned: !n.isPinned, updatedAt: new Date().toISOString() } 
+          : n
+      )
     }));
     await get().saveData();
   },

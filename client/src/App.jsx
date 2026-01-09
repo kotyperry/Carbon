@@ -3,6 +3,7 @@ import { useBoardStore } from './store/boardStore';
 import Sidebar from './components/Sidebar';
 import Board from './components/Board';
 import BookmarksView from './components/BookmarksView';
+import NotesView from './components/NotesView';
 import TitlebarDragRegion from './components/TitlebarDragRegion';
 import UpdateNotification from './components/UpdateNotification';
 
@@ -74,10 +75,14 @@ function App() {
 
       {/* Main content */}
       <main className="flex-1 overflow-hidden flex flex-col">
-        {activeView === 'boards' ? (
+        {activeView === 'boards' && (
           <Board onMenuClick={() => setSidebarOpen(true)} />
-        ) : (
+        )}
+        {activeView === 'bookmarks' && (
           <BookmarksView onMenuClick={() => setSidebarOpen(true)} />
+        )}
+        {activeView === 'notes' && (
+          <NotesView onMenuClick={() => setSidebarOpen(true)} />
         )}
       </main>
 

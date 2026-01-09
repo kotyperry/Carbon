@@ -262,7 +262,7 @@ function Sidebar({ isOpen, onClose }) {
                 <button
                   onClick={() => setActiveView('boards')}
                   className={`
-                    flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all
+                    flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all
                     ${activeView === 'boards'
                       ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}
@@ -279,7 +279,7 @@ function Sidebar({ isOpen, onClose }) {
                     setActiveCollection('all');
                   }}
                   className={`
-                    flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all
+                    flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all
                     ${activeView === 'bookmarks'
                       ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}
@@ -289,6 +289,20 @@ function Sidebar({ isOpen, onClose }) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
                   Bookmarks
+                </button>
+                <button
+                  onClick={() => setActiveView('notes')}
+                  className={`
+                    flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium transition-all
+                    ${activeView === 'notes'
+                      ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
+                      : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}
+                  `}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Notes
                 </button>
               </div>
             </div>
@@ -582,38 +596,79 @@ function Sidebar({ isOpen, onClose }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </button>
+            <button
+              onClick={() => setActiveView('notes')}
+              className={`
+                w-full p-2 rounded-lg transition-colors
+                ${activeView === 'notes' ? 'bg-cyber-cyan/20 text-cyber-cyan' : theme === 'dark' ? 'text-gray-400 hover:bg-charcoal-700' : 'text-gray-500 hover:bg-gray-100'}
+              `}
+              title="Notes"
+            >
+              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
           </div>
         )}
       </div>
 
       {/* Footer - Theme Toggle & Version */}
-      <div className={`p-4 border-t ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
+      <div className={`p-4 border-t flex items-center justify-between ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
+        {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           className={`
-            w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors
-            ${theme === 'dark' ? 'hover:bg-charcoal-700' : 'hover:bg-gray-100'}
+            relative w-14 h-7 rounded-full transition-colors duration-300 ease-in-out
+            ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-200'}
           `}
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
-          {theme === 'dark' ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          {/* Toggle track icons */}
+          <div className="absolute inset-0 flex items-center justify-between px-1.5">
+            {/* Sun icon (left side) */}
+            <svg 
+              className={`w-4 h-4 transition-opacity duration-300 ${theme === 'dark' ? 'opacity-30 text-gray-500' : 'opacity-0'}`}
+              fill="currentColor" 
+              viewBox="0 0 20 20"
+            >
+              <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
             </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            {/* Moon icon (right side) */}
+            <svg 
+              className={`w-4 h-4 transition-opacity duration-300 ${theme === 'dark' ? 'opacity-0' : 'opacity-30 text-gray-400'}`}
+              fill="currentColor" 
+              viewBox="0 0 20 20"
+            >
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
             </svg>
-          )}
-          {(!isCollapsed || window.innerWidth < 1024) && (
-            <span className="text-sm">
-              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-            </span>
-          )}
+          </div>
+          {/* Toggle knob */}
+          <div 
+            className={`
+              absolute top-0.5 w-6 h-6 rounded-full shadow-md transition-all duration-300 ease-in-out
+              flex items-center justify-center
+              ${theme === 'dark' 
+                ? 'translate-x-7 bg-charcoal-500' 
+                : 'translate-x-0.5 bg-white'
+              }
+            `}
+          >
+            {theme === 'dark' ? (
+              <svg className="w-3.5 h-3.5 text-cyber-cyan" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
         </button>
+        
         {/* Version */}
         {(!isCollapsed || window.innerWidth < 1024) && appVersion && (
-          <div className={`mt-3 text-center text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+          <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
             v{appVersion}
           </div>
         )}
