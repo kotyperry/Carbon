@@ -256,22 +256,22 @@ function Sidebar({ isOpen, onClose }) {
       <div className="flex-1 overflow-y-auto">
         {(!isCollapsed || window.innerWidth < 1024) ? (
           <>
-            {/* View Switcher - Icon Stack */}
+            {/* View Switcher - Stacked with Labels */}
             <div className={`p-2 border-b ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
               <div className={`flex flex-col gap-1 rounded-xl p-1.5 ${theme === 'dark' ? 'bg-charcoal-700/50' : 'bg-gray-100'}`}>
                 <button
                   onClick={() => setActiveView('boards')}
                   className={`
-                    flex items-center justify-center p-2.5 rounded-lg transition-all
+                    flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all
                     ${activeView === 'boards'
                       ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-charcoal-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}
                   `}
-                  title="Boards"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                   </svg>
+                  Boards
                 </button>
                 <button
                   onClick={() => {
@@ -279,30 +279,30 @@ function Sidebar({ isOpen, onClose }) {
                     setActiveCollection('all');
                   }}
                   className={`
-                    flex items-center justify-center p-2.5 rounded-lg transition-all
+                    flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all
                     ${activeView === 'bookmarks'
                       ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-charcoal-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}
                   `}
-                  title="Bookmarks"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                   </svg>
+                  Bookmarks
                 </button>
                 <button
                   onClick={() => setActiveView('notes')}
                   className={`
-                    flex items-center justify-center p-2.5 rounded-lg transition-all
+                    flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all
                     ${activeView === 'notes'
                       ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
                       : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-charcoal-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}
                   `}
-                  title="Notes"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
+                  Notes
                 </button>
               </div>
             </div>
