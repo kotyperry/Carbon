@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { useBoardStore } from '../store/boardStore';
 
 function CardContextMenu({ card, columnId, position, onClose }) {
-  const { theme, clearCompletedChecklistItems } = useBoardStore();
+  const { theme, clearCompletedChecklistItems, deleteCard, archiveCard } = useBoardStore();
   const [copied, setCopied] = useState(false);
   const [cleared, setCleared] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const menuRef = useRef(null);
 
   const checklist = card.checklist || [];
@@ -181,6 +182,64 @@ function CardContextMenu({ card, columnId, position, onClose }) {
             </>
           )}
         </button>
+
+        {/* Divider */}
+        <div className={`my-1 border-t ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`} />
+
+        {/* Archive Card Option */}
+        <button
+          onClick={async () => {
+            await archiveCard(columnId, card.id);
+            onClose();
+          }}
+          className={`
+            w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors
+            ${theme === 'dark' 
+              ? 'text-gray-300 hover:bg-charcoal-700' 
+              : 'text-gray-700 hover:bg-gray-100'}
+          `}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+          </svg>
+          <span>Archive Card</span>
+        </button>
+
+        {/* Delete Card Option */}
+        {!showDeleteConfirm ? (
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className={`
+              w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors
+              ${theme === 'dark' 
+                ? 'text-red-400 hover:bg-red-500/10' 
+                : 'text-red-600 hover:bg-red-50'}
+            `}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>Delete Card</span>
+          </button>
+        ) : (
+          <button
+            onClick={async () => {
+              await deleteCard(columnId, card.id);
+              onClose();
+            }}
+            className={`
+              w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors
+              ${theme === 'dark' 
+                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
+                : 'bg-red-100 text-red-700 hover:bg-red-200'}
+            `}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="font-medium">Click again to confirm</span>
+          </button>
+        )}
       </div>
 
       {/* Info Footer when no checklist */}

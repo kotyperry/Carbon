@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Carbon",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "identifier": "com.carbon.app",
   "build": {
     "frontendDist": "../dist",
