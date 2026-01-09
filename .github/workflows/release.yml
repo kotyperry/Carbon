@@ -102,9 +102,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download latest.json from release
+      - name: Download release assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          R2_BASE_URL: https://update.blkdog.dev
         run: |
           VERSION="v${{ needs.build-and-release.outputs.version }}"
           echo "Looking for release: $VERSION"
@@ -121,44 +122,84 @@ jobs:
             echo "Assets found: $(echo "$RELEASE_INFO" | jq -r '.assets | length')"
             echo "Asset names: $(echo "$RELEASE_INFO" | jq -r '.assets[].name')"
             
-            ASSET_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name == "latest.json") | .url')
+            LATEST_JSON_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name == "latest.json") | .url')
+            APP_TAR_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | endswith(".app.tar.gz")) | .url')
+            APP_TAR_NAME=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | endswith(".app.tar.gz")) | .name')
             
-            if [ -n "$ASSET_URL" ] && [ "$ASSET_URL" != "null" ]; then
-              echo "Found asset URL: $ASSET_URL"
+            if [ -n "$LATEST_JSON_URL" ] && [ "$LATEST_JSON_URL" != "null" ] && [ -n "$APP_TAR_URL" ] && [ "$APP_TAR_URL" != "null" ]; then
+              echo "Found all required assets"
               break
             fi
             
-            echo "Asset not found yet, waiting 15 seconds..."
+            echo "Assets not found yet, waiting 15 seconds..."
             sleep 15
           done
 
-          if [ -z "$ASSET_URL" ] || [ "$ASSET_URL" == "null" ]; then
-            echo "ERROR: Could not find latest.json asset after multiple attempts"
+          if [ -z "$LATEST_JSON_URL" ] || [ "$LATEST_JSON_URL" == "null" ]; then
+            echo "ERROR: Could not find latest.json asset"
+            exit 1
+          fi
+          
+          if [ -z "$APP_TAR_URL" ] || [ "$APP_TAR_URL" == "null" ]; then
+            echo "ERROR: Could not find .app.tar.gz asset"
             exit 1
           fi
 
-          # Download the actual file
+          # Download latest.json
           echo "Downloading latest.json..."
           curl -L \
             -H "Accept: application/octet-stream" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -o latest.json \
-            "$ASSET_URL"
+            "$LATEST_JSON_URL"
 
-          echo "Contents of latest.json:"
+          echo "Original latest.json:"
+          cat latest.json
+
+          # Download the app tar.gz
+          echo "Downloading $APP_TAR_NAME..."
+          curl -L \
+            -H "Accept: application/octet-stream" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -o "$APP_TAR_NAME" \
+            "$APP_TAR_URL"
+          
+          echo "Downloaded app archive: $(ls -lh $APP_TAR_NAME)"
+
+          # Update latest.json to point to R2 URLs instead of GitHub
+          echo "Updating latest.json URLs to point to R2..."
+          jq --arg base_url "$R2_BASE_URL/carbon" --arg app_name "$APP_TAR_NAME" '
+            .platforms |= with_entries(
+              .value.url = "\($base_url)/\($app_name)"
+            )
+          ' latest.json > latest_updated.json
+          
+          mv latest_updated.json latest.json
+          
+          echo "Updated latest.json:"
           cat latest.json
 
           # Validate JSON
           if ! jq empty latest.json 2>/dev/null; then
-            echo "ERROR: Downloaded file is not valid JSON"
+            echo "ERROR: Updated file is not valid JSON"
             exit 1
           fi
 
-          echo "Successfully downloaded latest.json"
+          # Save app tar name for next step
+          echo "APP_TAR_NAME=$APP_TAR_NAME" >> $GITHUB_ENV
+          
+          echo "Successfully prepared all assets for upload"
 
-      - name: Upload to Cloudflare R2
+      - name: Upload app archive to Cloudflare R2
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: r2 object put updates/latest.json --file=latest.json --content-type=application/json
+          command: r2 object put updates/carbon/${{ env.APP_TAR_NAME }} --file=${{ env.APP_TAR_NAME }} --content-type=application/gzip
+
+      - name: Upload latest.json to Cloudflare R2
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: r2 object put updates/carbon/latest.json --file=latest.json --content-type=application/json
