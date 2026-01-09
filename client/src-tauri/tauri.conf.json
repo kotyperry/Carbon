@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Carbon",
   "version": "1.1.0",
-  "identifier": "com.carbon.app",
+  "identifier": "iCloud.dev.blkdog.carbon",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
