@@ -2,29 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- iCloud Container Identifiers -->
     <key>com.apple.developer.icloud-container-identifiers</key>
     <array>
         <string>iCloud.dev.blkdog.carbon</string>
     </array>
-    
-    <!-- iCloud Services - CloudKit -->
     <key>com.apple.developer.icloud-services</key>
     <array>
         <string>CloudKit</string>
     </array>
-    
-    <!-- App Sandbox - DISABLED for development -->
-    <!-- Enable this only for Mac App Store distribution with proper provisioning -->
-    <key>com.apple.security.app-sandbox</key>
-    <false/>
-    
-    <!-- Network access for CloudKit -->
-    <key>com.apple.security.network.client</key>
-    <true/>
-    
-    <!-- Allow reading/writing user-selected files -->
-    <key>com.apple.security.files.user-selected.read-write</key>
-    <true/>
 </dict>
 </plist>

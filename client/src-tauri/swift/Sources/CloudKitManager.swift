@@ -5,7 +5,7 @@ import CloudKit
 public class CloudKitManager {
     public static let shared = CloudKitManager()
     
-    private let containerIdentifier = "iCloud.com.carbon.app"
+    private let containerIdentifier = "iCloud.dev.blkdog.carbon"
     private var container: CKContainer
     private var privateDatabase: CKDatabase
     
