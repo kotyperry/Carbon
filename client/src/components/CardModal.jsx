@@ -138,11 +138,11 @@ function CardModal({ card, columnId, onClose }) {
         onClick={(e) => e.stopPropagation()}
         className={`
           relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl animate-scale-in
-          ${theme === 'dark' ? 'bg-charcoal-800 border border-charcoal-700' : 'bg-white'}
+          ${theme === 'dark' ? 'glass-modal' : 'bg-white'}
         `}
       >
         {/* Header */}
-        <div className={`px-6 py-4 border-b sticky top-0 z-10 ${theme === 'dark' ? 'border-charcoal-700 bg-charcoal-800' : 'border-gray-200 bg-white'}`}>
+        <div className={`px-6 py-4 border-b sticky top-0 z-10 ${theme === 'dark' ? 'border-white/10 bg-charcoal-900/80 backdrop-blur-xl' : 'border-gray-200 bg-white'}`}>
           <div className="flex items-start justify-between gap-4">
             {isEditingTitle ? (
               <input

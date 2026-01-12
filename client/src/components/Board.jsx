@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -36,6 +36,70 @@ function Board({ onMenuClick }) {
   const [activeType, setActiveType] = useState(null);
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState("");
+  
+  // Masonry layout state
+  const containerRef = useRef(null);
+  const itemRefs = useRef({});
+  const [masonryStyles, setMasonryStyles] = useState({});
+  const [containerHeight, setContainerHeight] = useState(0);
+  
+  const COLUMN_WIDTH = 288; // w-72 = 18rem = 288px
+  const GAP = 16; // gap-4 = 1rem = 16px
+  
+  // Calculate masonry layout
+  const calculateMasonry = useCallback(() => {
+    if (!containerRef.current) return;
+    
+    const containerWidth = containerRef.current.offsetWidth;
+    const numColumns = Math.max(1, Math.floor((containerWidth + GAP) / (COLUMN_WIDTH + GAP)));
+    const columnHeights = new Array(numColumns).fill(0);
+    const newStyles = {};
+    
+    // Get all items (columns + add button)
+    const itemIds = board ? [...board.columns.map(c => c.id), 'add-column'] : ['add-column'];
+    
+    itemIds.forEach((id) => {
+      // Find the shortest column
+      const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
+      const x = shortestColumn * (COLUMN_WIDTH + GAP);
+      const y = columnHeights[shortestColumn];
+      
+      newStyles[id] = {
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: COLUMN_WIDTH,
+      };
+      
+      // Get actual height of this item
+      const itemEl = itemRefs.current[id];
+      const itemHeight = itemEl ? itemEl.offsetHeight : 100;
+      columnHeights[shortestColumn] += itemHeight + GAP;
+    });
+    
+    setMasonryStyles(newStyles);
+    setContainerHeight(Math.max(...columnHeights));
+  }, [board]);
+  
+  // Recalculate on resize and when columns change
+  useEffect(() => {
+    calculateMasonry();
+    
+    const resizeObserver = new ResizeObserver(() => {
+      calculateMasonry();
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    // Also observe each item for height changes
+    Object.values(itemRefs.current).forEach((el) => {
+      if (el) resizeObserver.observe(el);
+    });
+    
+    return () => resizeObserver.disconnect();
+  }, [calculateMasonry, board?.columns]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -92,8 +156,8 @@ function Board({ onMenuClick }) {
                 x2="100%"
                 y2="100%"
               >
-                <stop offset="0%" style={{ stopColor: "#00d4ff" }} />
-                <stop offset="100%" style={{ stopColor: "#a855f7" }} />
+                <stop offset="0%" style={{ stopColor: "#4ade80" }} />
+                <stop offset="100%" style={{ stopColor: "#16a34a" }} />
               </linearGradient>
             </defs>
             <path
@@ -587,24 +651,35 @@ function Board({ onMenuClick }) {
             onDragEnd={handleDragEnd}
           >
             {/* 
-              CSS Columns masonry layout for Kanban columns:
-              - True masonry behavior where items stack vertically
-              - Add Column button appears below shortest column
+              JavaScript-based masonry layout for Kanban columns:
+              - Columns align at top in a row
+              - When window shrinks, columns wrap under the shortest column
             */}
-            <div className="masonry-grid pb-4">
+            <div 
+              ref={containerRef}
+              className="relative pb-4"
+              style={{ height: containerHeight || 'auto' }}
+            >
               <SortableContext
                 items={board.columns.map((c) => c.id)}
                 strategy={rectSortingStrategy}
               >
                 {board.columns.map((column) => (
-                  <div key={column.id} className="masonry-item">
+                  <div 
+                    key={column.id} 
+                    ref={(el) => (itemRefs.current[column.id] = el)}
+                    style={masonryStyles[column.id] || { position: 'absolute', opacity: 0 }}
+                  >
                     <Column column={column} />
                   </div>
                 ))}
               </SortableContext>
 
               {/* Add Column Button */}
-              <div className="masonry-item">
+              <div 
+                ref={(el) => (itemRefs.current['add-column'] = el)}
+                style={masonryStyles['add-column'] || { position: 'absolute', opacity: 0 }}
+              >
                 {isAddingColumn ? (
                   <form
                     onSubmit={handleAddColumn}

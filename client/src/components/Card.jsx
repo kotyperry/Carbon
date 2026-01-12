@@ -16,6 +16,7 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -93,17 +94,15 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
       <div
         ref={setNodeRef}
         style={style}
-        {...attributes}
-        {...listeners}
         onClick={handleCardClick}
         onContextMenu={handleContextMenu}
         className={`
-          p-3 rounded-lg cursor-grab active:cursor-grabbing
+          p-3 rounded-xl
           transition-all animate-fade-in
           ${priority ? `border-l-4 ${priority.borderColor}` : ''}
           ${isDragging || isDraggingOverlay ? 'opacity-50 scale-105' : ''}
           ${theme === 'dark'
-            ? 'bg-charcoal-600 hover:bg-charcoal-500 border border-charcoal-500 shadow-lg shadow-black/20'
+            ? 'glass-card shadow-lg shadow-black/30'
             : 'bg-white hover:bg-gray-50 border border-gray-200 shadow-sm'}
         `}
       >
@@ -126,9 +125,31 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
           <h4 className={`font-mono text-sm font-medium flex-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {card.title}
           </h4>
-          {priority && (
-            <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priority.color}`} title={priority.name} />
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {priority && (
+              <span className={`w-2 h-2 rounded-full ${priority.color}`} title={priority.name} />
+            )}
+            {/* Drag handle (prevents spacebar in inputs from triggering drag) */}
+            <button
+              ref={setActivatorNodeRef}
+              type="button"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className={`
+                p-1 rounded transition-colors cursor-grab active:cursor-grabbing
+                ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300 hover:bg-charcoal-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}
+              `}
+              title="Drag card"
+              aria-label="Drag card"
+            >
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M7 4a1 1 0 11-2 0 1 1 0 012 0zm0 6a1 1 0 11-2 0 1 1 0 012 0zm0 6a1 1 0 11-2 0 1 1 0 012 0zm8-12a1 1 0 11-2 0 1 1 0 012 0zm0 6a1 1 0 11-2 0 1 1 0 012 0zm0 6a1 1 0 11-2 0 1 1 0 012 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
         
         {card.description && (

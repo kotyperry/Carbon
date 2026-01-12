@@ -15,6 +15,14 @@ fn main() {
 
 #[cfg(target_os = "macos")]
 fn build_swift_library() {
+    // Don't link CloudKit in dev/debug builds.
+    // This avoids runtime failures like `dyld: Library not loaded: @rpath/libswift_Concurrency.dylib`.
+    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
+    if profile == "debug" {
+        println!("cargo:warning=Skipping Swift CloudKit build/link in debug profile");
+        return;
+    }
+
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let swift_dir = PathBuf::from(&manifest_dir).join("swift");
     let lib_dir = PathBuf::from(&manifest_dir).join("lib");

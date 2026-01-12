@@ -3,9 +3,14 @@
 //! This module provides Rust bindings to the Swift CloudKit bridge,
 //! enabling iCloud synchronization of app data across devices.
 
+#[cfg(all(target_os = "macos", not(debug_assertions)))]
 use std::ffi::{CStr, CString};
+#[cfg(all(target_os = "macos", not(debug_assertions)))]
 use std::os::raw::c_char;
+#[cfg(all(target_os = "macos", not(debug_assertions)))]
 use std::ptr;
+
+const CLOUDKIT_UNAVAILABLE_MSG: &str = "CloudKit is only available on macOS release builds";
 
 /// Sync status enum matching the Swift side
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,7 +49,7 @@ impl std::fmt::Display for SyncStatus {
 }
 
 // FFI declarations for the Swift CloudKit bridge
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(debug_assertions)))]
 extern "C" {
     fn cloudkit_init() -> bool;
     fn cloudkit_check_account() -> bool;
@@ -81,7 +86,7 @@ extern "C" {
 }
 
 /// Helper to convert C string to Rust String and free it
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(debug_assertions)))]
 unsafe fn c_string_to_rust(ptr: *mut c_char) -> Option<String> {
     if ptr.is_null() {
         None
@@ -103,12 +108,12 @@ pub struct SyncResult {
 }
 
 impl SyncResult {
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     fn unavailable() -> Self {
         SyncResult {
             success: false,
             should_update_local: false,
-            error: Some("CloudKit is only available on macOS".to_string()),
+            error: Some(CLOUDKIT_UNAVAILABLE_MSG.to_string()),
             data: None,
             remote_last_modified: None,
         }
@@ -172,29 +177,29 @@ pub struct CloudKit;
 
 impl CloudKit {
     /// Initialize CloudKit - call on app startup
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn init() -> bool {
         unsafe { cloudkit_init() }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn init() -> bool {
         false
     }
 
     /// Check if iCloud account is available
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn check_account() -> bool {
         unsafe { cloudkit_check_account() }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn check_account() -> bool {
         false
     }
 
     /// Get detailed iCloud account status
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn get_account_status() -> AccountStatusResult {
         let mut status: i32 = 3; // could_not_determine
         let mut error_ptr: *mut c_char = ptr::null_mut();
@@ -210,17 +215,17 @@ impl CloudKit {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn get_account_status() -> AccountStatusResult {
         AccountStatusResult {
             available: false,
             status: AccountStatus::Error,
-            error: Some("CloudKit is only available on macOS".to_string()),
+            error: Some(CLOUDKIT_UNAVAILABLE_MSG.to_string()),
         }
     }
 
     /// Perform a full sync operation
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn sync(local_data: &str, local_last_modified: &str) -> SyncResult {
         let data_cstring = match CString::new(local_data) {
             Ok(s) => s,
@@ -271,13 +276,13 @@ impl CloudKit {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn sync(_local_data: &str, _local_last_modified: &str) -> SyncResult {
         SyncResult::unavailable()
     }
 
     /// Push local data to CloudKit
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn push(data: &str, last_modified: &str) -> SyncResult {
         let data_cstring = match CString::new(data) {
             Ok(s) => s,
@@ -322,13 +327,13 @@ impl CloudKit {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn push(_data: &str, _last_modified: &str) -> SyncResult {
         SyncResult::unavailable()
     }
 
     /// Pull data from CloudKit
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn pull() -> SyncResult {
         let mut success = false;
         let mut should_update_local = false;
@@ -355,13 +360,13 @@ impl CloudKit {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn pull() -> SyncResult {
         SyncResult::unavailable()
     }
 
     /// Get current sync status
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn get_status() -> SyncStatusResult {
         let mut status: i32 = 0;
         let mut error_ptr: *mut c_char = ptr::null_mut();
@@ -376,32 +381,32 @@ impl CloudKit {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn get_status() -> SyncStatusResult {
         SyncStatusResult {
             status: SyncStatus::Offline,
-            error: Some("CloudKit is only available on macOS".to_string()),
+            error: Some(CLOUDKIT_UNAVAILABLE_MSG.to_string()),
         }
     }
 
     /// Setup CloudKit subscriptions for push notifications
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn setup_subscriptions() -> bool {
         unsafe { cloudkit_setup_subscriptions() }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn setup_subscriptions() -> bool {
         false
     }
 
     /// Delete all app data from CloudKit
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     pub fn delete_data() -> bool {
         unsafe { cloudkit_delete_data() }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(any(not(target_os = "macos"), debug_assertions))]
     pub fn delete_data() -> bool {
         false
     }

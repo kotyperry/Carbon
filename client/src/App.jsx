@@ -121,7 +121,7 @@ function App() {
           <div 
             className={`
               max-w-md w-full mx-4 rounded-2xl p-6 shadow-2xl
-              ${theme === 'dark' ? 'bg-charcoal-800 border border-charcoal-700' : 'bg-white border border-gray-200'}
+              ${theme === 'dark' ? 'glass-modal' : 'bg-white border border-gray-200'}
             `}
             onClick={(e) => e.stopPropagation()}
           >

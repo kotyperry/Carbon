@@ -46,7 +46,7 @@ function NoteCard({ note, onEdit }) {
       className={`
         group relative p-4 rounded-xl cursor-pointer transition-all duration-200
         ${theme === 'dark' 
-          ? 'bg-charcoal-800 hover:bg-charcoal-700 border border-charcoal-700 hover:border-charcoal-600' 
+          ? 'glass-card hover:border-white/15' 
           : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300'}
         ${note.isPinned ? 'ring-2 ring-cyber-cyan/30' : ''}
       `}

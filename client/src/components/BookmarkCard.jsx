@@ -84,11 +84,11 @@ function BookmarkCard({ bookmark, onEdit }) {
     <div
       onClick={handleOpenLink}
       className={`
-        group p-3 rounded-lg cursor-pointer
+        group p-3 rounded-xl cursor-pointer
         transition-all animate-fade-in relative
         hover:scale-[1.02] hover:-translate-y-0.5
         ${theme === 'dark'
-          ? 'bg-charcoal-600 hover:bg-charcoal-500 border border-charcoal-500 shadow-lg shadow-black/20 hover:border-cyber-cyan/50 hover:shadow-cyber-cyan/10'
+          ? 'glass-card shadow-lg shadow-black/30 hover:border-cyber-cyan/30'
           : 'bg-white hover:bg-gray-50 border border-gray-200 shadow-sm hover:border-cyber-cyan/50 hover:shadow-lg'}
       `}
     >

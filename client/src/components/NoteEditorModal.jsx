@@ -62,7 +62,7 @@ function NoteEditorModal({ note, onClose }) {
       <div 
         className={`
           w-full max-w-4xl h-[80vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden
-          ${theme === 'dark' ? 'bg-charcoal-800 border border-charcoal-700' : 'bg-white border border-gray-200'}
+          ${theme === 'dark' ? 'glass-modal' : 'bg-white border border-gray-200'}
         `}
         onClick={(e) => e.stopPropagation()}
       >

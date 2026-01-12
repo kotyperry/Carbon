@@ -631,7 +631,7 @@ pub fn run() {
             log::info!("Data directory: {:?}", get_data_dir());
             
             // Initialize CloudKit on macOS
-            #[cfg(target_os = "macos")]
+            #[cfg(all(target_os = "macos", not(debug_assertions)))]
             {
                 log::info!("Initializing CloudKit for iCloud sync...");
                 if CloudKit::init() {

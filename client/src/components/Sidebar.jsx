@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { getVersion } from "@tauri-apps/api/app";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   DndContext,
   closestCenter,
@@ -401,10 +402,10 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
         ${isCollapsed ? "lg:w-20" : "lg:w-72"}
         ${
           theme === "dark"
-            ? "bg-charcoal-800 border-charcoal-700"
-            : "bg-white border-gray-200"
+            ? "glass-sidebar"
+            : "bg-white border-r border-gray-200"
         }
-        border-r flex flex-col transition-all duration-300 z-30
+        flex flex-col transition-all duration-300 z-30
         
         /* Mobile: fixed overlay sidebar */
         fixed inset-y-0 left-0 w-72
@@ -414,6 +415,17 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
         lg:relative lg:translate-x-0
       `}
     >
+      {/* Draggable region for window movement - matches TitlebarDragRegion height */}
+      <div
+        data-tauri-drag-region
+        className="absolute top-0 left-0 right-0 h-8 z-10 hidden lg:block"
+        onMouseDown={(e) => {
+          if (e.buttons === 1) {
+            getCurrentWindow().startDragging();
+          }
+        }}
+      />
+      
       {/* Header - with padding for macOS traffic lights */}
       <div
         className={`p-4 pt-10 border-b ${
@@ -446,8 +458,8 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                     x2="0%"
                     y2="100%"
                   >
-                    <stop offset="0%" style={{ stopColor: "#33e0ff" }} />
-                    <stop offset="100%" style={{ stopColor: "#00a8cc" }} />
+                    <stop offset="0%" style={{ stopColor: "#4ade80" }} />
+                    <stop offset="100%" style={{ stopColor: "#15803d" }} />
                   </linearGradient>
                   <linearGradient
                     id="logoBar2"
@@ -456,8 +468,8 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                     x2="0%"
                     y2="100%"
                   >
-                    <stop offset="0%" style={{ stopColor: "#00d4ff" }} />
-                    <stop offset="100%" style={{ stopColor: "#0090b0" }} />
+                    <stop offset="0%" style={{ stopColor: "#22c55e" }} />
+                    <stop offset="100%" style={{ stopColor: "#166534" }} />
                   </linearGradient>
                   <linearGradient
                     id="logoBar3"
@@ -466,8 +478,8 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                     x2="0%"
                     y2="100%"
                   >
-                    <stop offset="0%" style={{ stopColor: "#00c4ef" }} />
-                    <stop offset="100%" style={{ stopColor: "#007a99" }} />
+                    <stop offset="0%" style={{ stopColor: "#16a34a" }} />
+                    <stop offset="100%" style={{ stopColor: "#14532d" }} />
                   </linearGradient>
                   <filter
                     id="logoShadow"
@@ -1209,7 +1221,7 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
           w-full max-w-md rounded-2xl p-6 shadow-2xl
           ${
             theme === "dark"
-              ? "bg-charcoal-800 border border-charcoal-700"
+              ? "glass-modal"
               : "bg-white border border-gray-200"
           }
         `}
