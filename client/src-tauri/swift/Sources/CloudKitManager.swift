@@ -12,6 +12,17 @@ private func parseISO8601(_ s: String) -> Date? {
     return withoutFractional.date(from: s)
 }
 
+private func ckErrorSummary(_ error: CKError) -> String {
+    // Include code + retryAfter if available (helps debugging + retry logic)
+    var parts: [String] = []
+    parts.append("CloudKit error: \(error.code.rawValue)")
+    parts.append(error.localizedDescription)
+    if let retry = error.userInfo[CKErrorRetryAfterKey] as? NSNumber {
+        parts.append("retryAfter=\(retry)")
+    }
+    return parts.joined(separator: " · ")
+}
+
 /// Manages all CloudKit operations for Carbon app
 public class CloudKitManager {
     public static let shared = CloudKitManager()
@@ -132,49 +143,79 @@ public class CloudKitManager {
     public func saveAppData(_ jsonData: String, lastModified: String) async -> Bool {
         currentStatus = .syncing
         
-        do {
-            // Check account status first
-            guard await checkAccountStatus() else {
-                currentStatus = .offline
-                lastError = "iCloud account not available"
-                return false
-            }
-            
-            let recordID = CKRecord.ID(recordName: "carbon-app-data")
-            
-            // Try to fetch existing record first
-            var record: CKRecord
-            do {
-                record = try await privateDatabase.record(for: recordID)
-            } catch {
-                // Record doesn't exist, create new one
-                record = CKRecord(recordType: appDataRecordType, recordID: recordID)
-            }
-            
-            // Check for conflicts using last modified timestamp
-            if let existingModified = record["lastModified"] as? String,
-               let existingDate = parseISO8601(existingModified),
-               let newDate = parseISO8601(lastModified) {
-                // Last write wins - only save if our data is newer
-                if existingDate > newDate {
-                    currentStatus = .synced
-                    return true // Server has newer data, don't overwrite
-                }
-            }
-            
-            record["data"] = jsonData as CKRecordValue
-            record["lastModified"] = lastModified as CKRecordValue
-            
-            _ = try await privateDatabase.save(record)
-            currentStatus = .synced
-            lastError = nil
-            return true
-        } catch {
-            currentStatus = .error
-            lastError = error.localizedDescription
-            print("CloudKit save error: \(error)")
+        // Check account status first
+        guard await checkAccountStatus() else {
+            currentStatus = .offline
+            lastError = "iCloud account not available"
             return false
         }
+
+        let recordID = CKRecord.ID(recordName: "carbon-app-data")
+        let maxAttempts = 3
+
+        for attempt in 1...maxAttempts {
+            do {
+                // Try to fetch existing record first
+                let record: CKRecord
+                do {
+                    record = try await privateDatabase.record(for: recordID)
+                } catch {
+                    // Record doesn't exist, create new one
+                    record = CKRecord(recordType: appDataRecordType, recordID: recordID)
+                }
+
+                // Check for conflicts using last modified timestamp
+                if let existingModified = record["lastModified"] as? String,
+                   let existingDate = parseISO8601(existingModified),
+                   let newDate = parseISO8601(lastModified) {
+                    // Last write wins - only save if our data is newer
+                    if existingDate > newDate {
+                        currentStatus = .error
+                        lastError = "CAS failed: server has newer data"
+                        return false
+                    }
+                }
+
+                record["data"] = jsonData as CKRecordValue
+                record["lastModified"] = lastModified as CKRecordValue
+
+                _ = try await privateDatabase.save(record)
+                currentStatus = .synced
+                lastError = nil
+                return true
+            } catch let error as CKError {
+                // Handle CAS / record changed conflict
+                if error.code == .serverRecordChanged {
+                    // Another device updated between fetch and save; retry by looping.
+                    lastError = "CAS failed: server record changed"
+                    if attempt < maxAttempts {
+                        continue
+                    }
+                    currentStatus = .error
+                    return false
+                }
+
+                // Retry transient failures using retryAfter if provided
+                if let retry = error.userInfo[CKErrorRetryAfterKey] as? NSNumber,
+                   attempt < maxAttempts {
+                    let seconds = max(0.5, retry.doubleValue)
+                    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                    continue
+                }
+
+                currentStatus = .error
+                lastError = ckErrorSummary(error)
+                return false
+            } catch {
+                currentStatus = .error
+                lastError = error.localizedDescription
+                return false
+            }
+        }
+
+        currentStatus = .error
+        lastError = "CloudKit save failed"
+        return false
     }
     
     // MARK: - Fetch Operations

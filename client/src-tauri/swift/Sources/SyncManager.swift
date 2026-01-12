@@ -66,13 +66,27 @@ public class SyncManager {
         
         if saveSuccess {
             return SyncResult(success: true, error: nil, data: nil, shouldUpdateLocal: false)
-        } else {
-            return SyncResult(
-                success: false,
-                error: cloudKit.lastError ?? "Unknown error",
-                data: nil
-            )
         }
+        
+        // If we hit a CAS/server-changed conflict, prefer to pull the latest remote and apply LWW.
+        if let err = cloudKit.lastError, err.lowercased().contains("cas failed") {
+            let (freshRemoteData, freshRemoteLastModified) = await cloudKit.fetchAppData()
+            if let freshRemoteData = freshRemoteData {
+                return SyncResult(
+                    success: true,
+                    error: nil,
+                    data: freshRemoteData,
+                    shouldUpdateLocal: true,
+                    remoteLastModified: freshRemoteLastModified
+                )
+            }
+        }
+        
+        return SyncResult(
+            success: false,
+            error: cloudKit.lastError ?? "Unknown error",
+            data: nil
+        )
     }
     
     /// Pull data from cloud (for initial sync or manual refresh)
