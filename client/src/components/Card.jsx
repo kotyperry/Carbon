@@ -6,9 +6,11 @@ import CardModal from './CardModal';
 import CardContextMenu from './CardContextMenu';
 
 function Card({ card, columnId, isDragging: isDraggingOverlay }) {
-  const { theme, toggleChecklistItem } = useBoardStore();
+  const { theme, toggleChecklistItem, addChecklistItem } = useBoardStore();
   const [showModal, setShowModal] = useState(false);
   const [contextMenu, setContextMenu] = useState(null); // { x, y } or null
+  const [isAddingChecklistItem, setIsAddingChecklistItem] = useState(false);
+  const [newChecklistItem, setNewChecklistItem] = useState('');
 
   const {
     attributes,
@@ -48,6 +50,28 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
   const handleChecklistToggle = (e, itemId) => {
     e.stopPropagation();
     toggleChecklistItem(columnId, card.id, itemId);
+  };
+
+  const handleStartAddChecklistItem = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsAddingChecklistItem(true);
+  };
+
+  const handleAddChecklistItem = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = newChecklistItem.trim();
+    if (!text) return;
+    await addChecklistItem(columnId, card.id, text);
+    setNewChecklistItem('');
+    setIsAddingChecklistItem(true);
+  };
+
+  const handleCancelAddChecklistItem = (e) => {
+    e?.stopPropagation?.();
+    setIsAddingChecklistItem(false);
+    setNewChecklistItem('');
   };
 
   // Handle card click (opens modal)
@@ -161,6 +185,66 @@ function Card({ card, columnId, isDragging: isDraggingOverlay }) {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Add Checklist Item (inline, without opening modal) */}
+        {totalCount === 0 && !isAddingChecklistItem && (
+          <button
+            type="button"
+            onClick={handleStartAddChecklistItem}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className={`
+              mt-2 text-left text-[11px] font-mono transition-colors
+              ${theme === 'dark' ? 'text-gray-400 hover:text-cyber-cyan' : 'text-gray-500 hover:text-cyber-cyan'}
+            `}
+          >
+            + Add checklist item
+          </button>
+        )}
+
+        {(totalCount > 0 || isAddingChecklistItem) && (
+          <form
+            onSubmit={handleAddChecklistItem}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="mt-1 flex items-center gap-2"
+          >
+            <span className={`text-[11px] font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+              +
+            </span>
+            <input
+              type="text"
+              value={newChecklistItem}
+              onChange={(e) => setNewChecklistItem(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') handleCancelAddChecklistItem(e);
+              }}
+              placeholder="Add item…"
+              className={`
+                flex-1 min-w-0 bg-transparent text-[11px] font-mono rounded px-1 py-0.5 outline-none
+                ${theme === 'dark'
+                  ? 'text-gray-200 placeholder:text-gray-600 focus:ring-1 focus:ring-cyber-cyan/40'
+                  : 'text-gray-700 placeholder:text-gray-400 focus:ring-1 focus:ring-cyber-cyan/30'}
+              `}
+            />
+            <button
+              type="submit"
+              disabled={!newChecklistItem.trim()}
+              className={`
+                text-[11px] font-mono px-2 py-0.5 rounded transition-colors
+                ${newChecklistItem.trim()
+                  ? 'bg-cyber-cyan/20 text-cyber-cyan hover:bg-cyber-cyan/30'
+                  : theme === 'dark'
+                    ? 'bg-charcoal-700 text-gray-600 cursor-not-allowed'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'}
+              `}
+              title="Add checklist item"
+            >
+              Add
+            </button>
+          </form>
         )}
 
         {/* Footer */}

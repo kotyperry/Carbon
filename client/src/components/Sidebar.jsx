@@ -594,7 +594,7 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
               }`}
             >
               <div
-                className={`grid grid-cols-3 gap-2 rounded-xl p-1.5 ${
+                className={`grid grid-cols-2 gap-2 rounded-xl p-1.5 ${
                   theme === "dark" ? "bg-charcoal-700/50" : "bg-gray-100"
                 }`}
               >

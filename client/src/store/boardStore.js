@@ -26,6 +26,11 @@ if (isTauri()) {
 let autoSyncIntervalId = null;
 let syncListenersInstalled = false;
 let lastLocalChangeAt = 0;
+let syncInFlight = false;
+
+// Background polling interval. CloudKit sync is relatively expensive (serialization + network),
+// so avoid aggressive polling.
+const AUTO_SYNC_INTERVAL_MS = 30_000;
 
 // Debounce helper for sync operations
 const debounce = (fn, delay) => {
@@ -164,6 +169,13 @@ const api = {
   async syncToCloud(data) {
     if (isTauri() && invoke && isMacOS()) {
       return await invoke("sync_to_cloud", { data });
+    }
+    return { success: false, error: "CloudKit not available" };
+  },
+
+  async pushToCloud(data) {
+    if (isTauri() && invoke && isMacOS()) {
+      return await invoke("push_to_cloud", { data });
     }
     return { success: false, error: "CloudKit not available" };
   },
@@ -344,7 +356,7 @@ export const useBoardStore = create((set, get) => ({
   debouncedSync: debounce(async () => {
     const store = useBoardStore.getState();
     if (store.syncEnabled && store.iCloudAvailable) {
-      await store.performSync();
+      await store.performSync({ mode: "push" });
     }
   }, 2000),
 
@@ -386,11 +398,12 @@ export const useBoardStore = create((set, get) => ({
     autoSyncIntervalId = setInterval(() => {
       const s = useBoardStore.getState();
       if (!s.syncEnabled || !s.iCloudAvailable) return;
-      if (s.syncStatus === "syncing") return;
+      if (syncInFlight) return;
       // If the user just changed data locally, let the debounced push handle it.
       if (Date.now() - lastLocalChangeAt < 3500) return;
-      s.performSync({ quiet: true });
-    }, 2000);
+      // Background polling should be pull-only to avoid re-uploading the entire dataset.
+      s.performSync({ quiet: true, mode: "pull" });
+    }, AUTO_SYNC_INTERVAL_MS);
   },
 
   stopAutoSync: () => {
@@ -1452,6 +1465,7 @@ export const useBoardStore = create((set, get) => ({
   // Perform sync with iCloud
   performSync: async (options = {}) => {
     const quiet = !!options.quiet;
+    const mode = options.mode || "full"; // 'full' | 'push' | 'pull'
     const {
       syncEnabled,
       iCloudAvailable,
@@ -1469,6 +1483,9 @@ export const useBoardStore = create((set, get) => ({
     if (!syncEnabled || !iCloudAvailable) {
       return;
     }
+
+    if (syncInFlight) return;
+    syncInFlight = true;
 
     // For background polling, keep the UI stable (avoid flashing between "Syncing" and "Synced")
     if (!quiet) {
@@ -1491,13 +1508,21 @@ export const useBoardStore = create((set, get) => ({
         syncEnabled,
       };
 
-      const result = await api.syncToCloud(data);
+      let result;
+      if (mode === "pull") {
+        result = await api.syncFromCloud();
+      } else if (mode === "push") {
+        result = await api.pushToCloud(data);
+      } else {
+        result = await api.syncToCloud(data);
+      }
 
       if (result.success) {
         if (result.shouldUpdateLocal && result.data) {
           // Remote data is newer, update local state
           try {
             const remoteData = JSON.parse(result.data);
+            const currentActiveView = get().activeView;
 
             // Merge custom tags
             const remoteTags = remoteData.customTags || {};
@@ -1511,7 +1536,8 @@ export const useBoardStore = create((set, get) => ({
               collections: remoteData.collections || get().collections,
               customTags: remoteTags,
               notes: remoteData.notes || [],
-              activeView: remoteData.activeView || "boards",
+              // Do not sync UI navigation across devices
+              activeView: currentActiveView,
               lastModified:
                 result.remoteLastModified || remoteData.lastModified,
               lastSyncedAt: new Date().toISOString(),
@@ -1532,6 +1558,7 @@ export const useBoardStore = create((set, get) => ({
             // Save the merged data locally
             await api.writeData({
               ...remoteData,
+              activeView: currentActiveView,
               syncEnabled: true,
             });
           } catch (parseError) {
@@ -1554,6 +1581,8 @@ export const useBoardStore = create((set, get) => ({
     } catch (error) {
       console.error("Sync error:", error);
       set({ syncStatus: "error", syncError: error.message || "Sync failed" });
+    } finally {
+      syncInFlight = false;
     }
   },
 
@@ -1573,6 +1602,7 @@ export const useBoardStore = create((set, get) => ({
 
       if (result.success && result.data) {
         const remoteData = JSON.parse(result.data);
+        const currentActiveView = get().activeView;
 
         // Merge custom tags
         const remoteTags = remoteData.customTags || {};
@@ -1586,10 +1616,12 @@ export const useBoardStore = create((set, get) => ({
           collections: remoteData.collections || get().collections,
           customTags: remoteTags,
           notes: remoteData.notes || [],
-          activeView: remoteData.activeView || "boards",
+          // Do not sync UI navigation across devices
+          activeView: currentActiveView,
           lastModified: result.remoteLastModified || remoteData.lastModified,
           syncStatus: "synced",
           syncError: null,
+          lastSyncedAt: new Date().toISOString(),
         });
 
         // Apply theme
@@ -1605,11 +1637,16 @@ export const useBoardStore = create((set, get) => ({
         // Save locally
         await api.writeData({
           ...remoteData,
+          activeView: currentActiveView,
           syncEnabled: true,
         });
       } else if (result.success) {
         // No data in cloud yet
-        set({ syncStatus: "synced", syncError: null });
+        set({
+          syncStatus: "synced",
+          syncError: null,
+          lastSyncedAt: new Date().toISOString(),
+        });
       } else {
         set({ syncStatus: "error", syncError: result.error || "Pull failed" });
       }

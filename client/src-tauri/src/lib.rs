@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::Manager;
 use tauri_plugin_updater::UpdaterExt;
 
 // CloudKit module for iCloud sync (macOS only)
@@ -116,6 +115,31 @@ pub struct AppData {
     pub theme: String,
     #[serde(rename = "activeView", default = "default_view")]
     pub active_view: String,
+    #[serde(default)]
+    pub bookmarks: Vec<Bookmark>,
+    #[serde(default = "default_collections")]
+    pub collections: Vec<Collection>,
+    #[serde(rename = "customTags", default)]
+    pub custom_tags: std::collections::HashMap<String, CustomTag>,
+    #[serde(default)]
+    pub notes: Vec<Note>,
+    /// Last modified timestamp for sync conflict resolution (ISO 8601)
+    #[serde(rename = "lastModified", default = "default_last_modified")]
+    pub last_modified: String,
+    /// Whether iCloud sync is enabled
+    #[serde(rename = "syncEnabled", default)]
+    pub sync_enabled: bool,
+}
+
+/// Data that is synced across devices via CloudKit.
+/// Intentionally excludes purely local UI state like `activeView`.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SyncData {
+    pub boards: Vec<Board>,
+    #[serde(rename = "activeBoard")]
+    pub active_board: Option<String>,
+    #[serde(default = "default_theme")]
+    pub theme: String,
     #[serde(default)]
     pub bookmarks: Vec<Bookmark>,
     #[serde(default = "default_collections")]
@@ -436,33 +460,77 @@ fn get_sync_status() -> serde_json::Value {
 /// Sync data with iCloud - performs bidirectional sync with last-write-wins conflict resolution
 #[tauri::command]
 #[cfg(target_os = "macos")]
-fn sync_to_cloud(data: AppData) -> Result<SyncResultJson, String> {
-    log::info!("Starting iCloud sync...");
-    
+async fn sync_to_cloud(data: SyncData) -> Result<SyncResultJson, String> {
+    log::debug!("Starting iCloud sync...");
+
     // Serialize the data to JSON
     let json_data = serde_json::to_string(&data)
         .map_err(|e| format!("Failed to serialize data: {}", e))?;
-    
-    // Perform sync
-    let result = CloudKit::sync(&json_data, &data.last_modified);
-    
-    if result.success {
-        log::info!("iCloud sync completed successfully");
-        
-        // If we need to update local data, the frontend will handle it
-        if result.should_update_local {
-            log::info!("Remote data is newer, frontend should update local data");
-        }
-    } else {
+    let last_modified = data.last_modified.clone();
+
+    // CloudKit FFI blocks; run it on a blocking thread to avoid UI / event loop stalls.
+    let result = tauri::async_runtime::spawn_blocking(move || CloudKit::sync(&json_data, &last_modified))
+        .await
+        .map_err(|e| format!("Sync task failed: {}", e))?;
+
+    if !result.success {
         log::error!("iCloud sync failed: {:?}", result.error);
     }
-    
+
+    Ok(result.into())
+}
+
+/// Push local data to iCloud (upload only).
+///
+/// This avoids an extra fetch that `sync_to_cloud` performs, and only falls back
+/// to a pull if the server reports newer data (CAS conflict).
+#[tauri::command]
+#[cfg(target_os = "macos")]
+async fn push_to_cloud(data: SyncData) -> Result<SyncResultJson, String> {
+    log::debug!("Pushing local data to iCloud...");
+
+    let json_data = serde_json::to_string(&data)
+        .map_err(|e| format!("Failed to serialize data: {}", e))?;
+    let last_modified = data.last_modified.clone();
+
+    let result = tauri::async_runtime::spawn_blocking(move || CloudKit::push(&json_data, &last_modified))
+        .await
+        .map_err(|e| format!("Push task failed: {}", e))?;
+
+    if result.success {
+        return Ok(result.into());
+    }
+
+    // If the server has newer data, pull it so the frontend can update local state.
+    if let Some(err) = result.error.as_deref() {
+        let err_lc = err.to_lowercase();
+        if err_lc.contains("cas failed") || err_lc.contains("server has newer data") {
+            log::debug!("Push conflicted; pulling latest remote data...");
+            let pull = tauri::async_runtime::spawn_blocking(|| CloudKit::pull())
+                .await
+                .map_err(|e| format!("Pull task failed: {}", e))?;
+            return Ok(pull.into());
+        }
+    }
+
     Ok(result.into())
 }
 
 #[tauri::command]
 #[cfg(not(target_os = "macos"))]
-fn sync_to_cloud(_data: AppData) -> Result<serde_json::Value, String> {
+fn push_to_cloud(_data: SyncData) -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({
+        "success": false,
+        "shouldUpdateLocal": false,
+        "error": "CloudKit is only available on macOS",
+        "data": null,
+        "remoteLastModified": null
+    }))
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn sync_to_cloud(_data: SyncData) -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({
         "success": false,
         "shouldUpdateLocal": false,
@@ -475,17 +543,17 @@ fn sync_to_cloud(_data: AppData) -> Result<serde_json::Value, String> {
 /// Pull data from iCloud
 #[tauri::command]
 #[cfg(target_os = "macos")]
-fn sync_from_cloud() -> Result<SyncResultJson, String> {
-    log::info!("Pulling data from iCloud...");
-    
-    let result = CloudKit::pull();
-    
-    if result.success {
-        log::info!("Successfully pulled data from iCloud");
-    } else {
+async fn sync_from_cloud() -> Result<SyncResultJson, String> {
+    log::debug!("Pulling data from iCloud...");
+
+    let result = tauri::async_runtime::spawn_blocking(|| CloudKit::pull())
+        .await
+        .map_err(|e| format!("Pull task failed: {}", e))?;
+
+    if !result.success {
         log::error!("Failed to pull from iCloud: {:?}", result.error);
     }
-    
+
     Ok(result.into())
 }
 
@@ -586,6 +654,7 @@ pub fn run() {
             get_icloud_account_status,
             get_sync_status,
             sync_to_cloud,
+            push_to_cloud,
             sync_from_cloud,
             init_cloudkit,
             delete_cloud_data
