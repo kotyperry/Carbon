@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -17,6 +17,119 @@ import {
 import { useBoardStore, LABELS, PRIORITIES } from "../store/boardStore";
 import Column from "./Column";
 import Card from "./Card";
+
+// AddColumnButton component with masonry positioning
+function AddColumnButton({ 
+  style, 
+  onHeightChange, 
+  isAddingColumn, 
+  setIsAddingColumn, 
+  newColumnTitle, 
+  setNewColumnTitle, 
+  handleAddColumn, 
+  theme 
+}) {
+  const ref = useRef(null);
+  
+  useEffect(() => {
+    if (!ref.current) return;
+    
+    const updateHeight = () => {
+      if (ref.current) {
+        onHeightChange('add-column', ref.current.offsetHeight);
+      }
+    };
+    
+    updateHeight();
+    
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(ref.current);
+    
+    return () => resizeObserver.disconnect();
+  }, [onHeightChange]);
+  
+  return (
+    <div ref={ref} style={style || { position: 'absolute', opacity: 0 }}>
+      {isAddingColumn ? (
+        <form
+          onSubmit={handleAddColumn}
+          className={`
+            w-full p-3 rounded-xl glass
+            ${theme === "dark" ? "" : "bg-white/50"}
+          `}
+        >
+          <input
+            type="text"
+            value={newColumnTitle}
+            onChange={(e) => setNewColumnTitle(e.target.value)}
+            placeholder="Column title..."
+            autoFocus
+            className={`
+              w-full px-3 py-2 rounded-lg font-mono text-sm
+              ${
+                theme === "dark"
+                  ? "bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500"
+                  : "bg-white border-gray-200 text-gray-900 placeholder-gray-400"
+              }
+              border focus:border-cyber-cyan
+            `}
+            onBlur={() => {
+              if (!newColumnTitle.trim()) setIsAddingColumn(false);
+            }}
+          />
+          <div className="flex gap-2 mt-2">
+            <button
+              type="submit"
+              className="flex-1 px-3 py-1.5 bg-cyber-cyan text-charcoal-900 rounded-lg font-mono text-sm font-medium hover:bg-cyber-cyan-dim"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAddingColumn(false)}
+              className={`px-3 py-1.5 rounded-lg font-mono text-sm ${
+                theme === "dark"
+                  ? "hover:bg-charcoal-700"
+                  : "hover:bg-gray-100"
+              }`}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          onClick={() => setIsAddingColumn(true)}
+          className={`
+            w-full p-4 rounded-xl border-2 border-dashed
+            flex items-center justify-center gap-2 font-mono text-sm
+            transition-colors min-h-[60px]
+            ${
+              theme === "dark"
+                ? "border-charcoal-600 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan"
+                : "border-gray-300 text-gray-400 hover:border-cyber-cyan hover:text-cyber-cyan"
+            }
+          `}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Add Column
+        </button>
+      )}
+    </div>
+  );
+}
 
 function Board({ onMenuClick }) {
   const {
@@ -39,67 +152,74 @@ function Board({ onMenuClick }) {
   
   // Masonry layout state
   const containerRef = useRef(null);
-  const itemRefs = useRef({});
-  const [masonryStyles, setMasonryStyles] = useState({});
-  const [containerHeight, setContainerHeight] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [columnHeightsMap, setColumnHeightsMap] = useState({});
   
   const COLUMN_WIDTH = 288; // w-72 = 18rem = 288px
   const GAP = 16; // gap-4 = 1rem = 16px
   
-  // Calculate masonry layout
-  const calculateMasonry = useCallback(() => {
+  // Track container width changes
+  useEffect(() => {
     if (!containerRef.current) return;
     
-    const containerWidth = containerRef.current.offsetWidth;
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    };
+    
+    updateWidth();
+    
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(containerRef.current);
+    
+    return () => resizeObserver.disconnect();
+  }, []);
+  
+  // Callback to update column height when it changes
+  const updateColumnHeight = useCallback((id, height) => {
+    setColumnHeightsMap(prev => {
+      if (prev[id] === height) return prev;
+      return { ...prev, [id]: height };
+    });
+  }, []);
+  
+  // Calculate masonry positions based on current heights
+  const { masonryStyles, containerHeight } = useMemo(() => {
+    if (!containerWidth || !board) {
+      return { masonryStyles: {}, containerHeight: 0 };
+    }
+    
     const numColumns = Math.max(1, Math.floor((containerWidth + GAP) / (COLUMN_WIDTH + GAP)));
     const columnHeights = new Array(numColumns).fill(0);
-    const newStyles = {};
+    const styles = {};
     
-    // Get all items (columns + add button)
-    const itemIds = board ? [...board.columns.map(c => c.id), 'add-column'] : ['add-column'];
+    // Include all columns plus add-column button
+    const itemIds = [...board.columns.map(c => c.id), 'add-column'];
     
     itemIds.forEach((id) => {
       // Find the shortest column
-      const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
-      const x = shortestColumn * (COLUMN_WIDTH + GAP);
-      const y = columnHeights[shortestColumn];
+      const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+      const x = shortestColumnIndex * (COLUMN_WIDTH + GAP);
+      const y = columnHeights[shortestColumnIndex];
       
-      newStyles[id] = {
+      styles[id] = {
         position: 'absolute',
         left: x,
         top: y,
         width: COLUMN_WIDTH,
       };
       
-      // Get actual height of this item
-      const itemEl = itemRefs.current[id];
-      const itemHeight = itemEl ? itemEl.offsetHeight : 100;
-      columnHeights[shortestColumn] += itemHeight + GAP;
+      // Use tracked height or default
+      const itemHeight = columnHeightsMap[id] || 150;
+      columnHeights[shortestColumnIndex] += itemHeight + GAP;
     });
     
-    setMasonryStyles(newStyles);
-    setContainerHeight(Math.max(...columnHeights));
-  }, [board]);
-  
-  // Recalculate on resize and when columns change
-  useEffect(() => {
-    calculateMasonry();
-    
-    const resizeObserver = new ResizeObserver(() => {
-      calculateMasonry();
-    });
-    
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    
-    // Also observe each item for height changes
-    Object.values(itemRefs.current).forEach((el) => {
-      if (el) resizeObserver.observe(el);
-    });
-    
-    return () => resizeObserver.disconnect();
-  }, [calculateMasonry, board?.columns]);
+    return { 
+      masonryStyles: styles, 
+      containerHeight: Math.max(...columnHeights, 0) 
+    };
+  }, [containerWidth, board, columnHeightsMap]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -651,113 +771,41 @@ function Board({ onMenuClick }) {
             onDragEnd={handleDragEnd}
           >
             {/* 
-              JavaScript-based masonry layout for Kanban columns:
-              - Columns align at top in a row
+              Masonry layout for Kanban columns:
+              - Columns align at top in a row when space allows
               - When window shrinks, columns wrap under the shortest column
+              - Add Column button appears below shortest column
             */}
             <div 
               ref={containerRef}
               className="relative pb-4"
-              style={{ height: containerHeight || 'auto' }}
+              style={{ minHeight: containerHeight || 'auto' }}
             >
               <SortableContext
                 items={board.columns.map((c) => c.id)}
                 strategy={rectSortingStrategy}
               >
                 {board.columns.map((column) => (
-                  <div 
-                    key={column.id} 
-                    ref={(el) => (itemRefs.current[column.id] = el)}
-                    style={masonryStyles[column.id] || { position: 'absolute', opacity: 0 }}
-                  >
-                    <Column column={column} />
-                  </div>
+                  <Column 
+                    key={column.id}
+                    column={column} 
+                    masonryStyle={masonryStyles[column.id] || { position: 'absolute', opacity: 0 }}
+                    onHeightChange={updateColumnHeight}
+                  />
                 ))}
               </SortableContext>
 
               {/* Add Column Button */}
-              <div 
-                ref={(el) => (itemRefs.current['add-column'] = el)}
-                style={masonryStyles['add-column'] || { position: 'absolute', opacity: 0 }}
-              >
-                {isAddingColumn ? (
-                  <form
-                    onSubmit={handleAddColumn}
-                    className={`
-                      w-full p-3 rounded-xl glass
-                      ${theme === "dark" ? "" : "bg-white/50"}
-                    `}
-                  >
-                    <input
-                      type="text"
-                      value={newColumnTitle}
-                      onChange={(e) => setNewColumnTitle(e.target.value)}
-                      placeholder="Column title..."
-                      autoFocus
-                      className={`
-                        w-full px-3 py-2 rounded-lg font-mono text-sm
-                        ${
-                          theme === "dark"
-                            ? "bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500"
-                            : "bg-white border-gray-200 text-gray-900 placeholder-gray-400"
-                        }
-                        border focus:border-cyber-cyan
-                      `}
-                      onBlur={() => {
-                        if (!newColumnTitle.trim()) setIsAddingColumn(false);
-                      }}
-                    />
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        type="submit"
-                        className="flex-1 px-3 py-1.5 bg-cyber-cyan text-charcoal-900 rounded-lg font-mono text-sm font-medium hover:bg-cyber-cyan-dim"
-                      >
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddingColumn(false)}
-                        className={`px-3 py-1.5 rounded-lg font-mono text-sm ${
-                          theme === "dark"
-                            ? "hover:bg-charcoal-700"
-                            : "hover:bg-gray-100"
-                        }`}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <button
-                    onClick={() => setIsAddingColumn(true)}
-                    className={`
-                      w-full p-4 rounded-xl border-2 border-dashed
-                      flex items-center justify-center gap-2 font-mono text-sm
-                      transition-colors min-h-[60px]
-                      ${
-                        theme === "dark"
-                          ? "border-charcoal-600 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan"
-                          : "border-gray-300 text-gray-400 hover:border-cyber-cyan hover:text-cyber-cyan"
-                      }
-                    `}
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    Add Column
-                  </button>
-                )}
-              </div>
+              <AddColumnButton
+                style={masonryStyles['add-column']}
+                onHeightChange={updateColumnHeight}
+                isAddingColumn={isAddingColumn}
+                setIsAddingColumn={setIsAddingColumn}
+                newColumnTitle={newColumnTitle}
+                setNewColumnTitle={setNewColumnTitle}
+                handleAddColumn={handleAddColumn}
+                theme={theme}
+              />
             </div>
 
             {/* Drag Overlay */}

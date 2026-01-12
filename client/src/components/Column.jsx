@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useBoardStore } from '../store/boardStore';
 import Card from './Card';
 
-function Column({ column, isDragging }) {
+function Column({ column, isDragging, masonryStyle, onHeightChange }) {
   const { updateColumn, deleteColumn, addCard, theme } = useBoardStore();
+  const heightRef = useRef(null);
   
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
@@ -22,7 +23,33 @@ function Column({ column, isDragging }) {
     transition,
   } = useSortable({ id: column.id });
 
+  // Track height changes for masonry layout
+  useEffect(() => {
+    if (!heightRef.current || !onHeightChange) return;
+    
+    const updateHeight = () => {
+      if (heightRef.current) {
+        onHeightChange(column.id, heightRef.current.offsetHeight);
+      }
+    };
+    
+    updateHeight();
+    
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(heightRef.current);
+    
+    return () => resizeObserver.disconnect();
+  }, [column.id, onHeightChange]);
+
+  // Combine refs for both height tracking and sortable
+  const setRefs = useCallback((node) => {
+    heightRef.current = node;
+    setNodeRef(node);
+  }, [setNodeRef]);
+
+  // Merge masonry positioning with dnd-kit transform
   const style = {
+    ...masonryStyle,
     transform: CSS.Transform.toString(transform),
     transition,
   };
@@ -52,7 +79,7 @@ function Column({ column, isDragging }) {
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
       style={style}
       className={`
         w-full
