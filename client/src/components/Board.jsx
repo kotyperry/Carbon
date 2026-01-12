@@ -3,7 +3,6 @@ import {
   DndContext,
   DragOverlay,
   closestCorners,
-  KeyboardSensor,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -11,7 +10,6 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useBoardStore, LABELS, PRIORITIES } from "../store/boardStore";
@@ -232,9 +230,6 @@ function Board({ onMenuClick }) {
         delay: 200,
         tolerance: 8,
       },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
