@@ -643,13 +643,13 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                     setActiveCollection("all");
                   }}
                   className={`
-                    flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all
+                    flex items-center justify-center gap-1 px-2 py-4 rounded-lg text-xs font-medium transition-all
                     ${
                       activeView === "bookmarks"
                         ? "bg-cyber-cyan text-charcoal-900 shadow-sm"
                         : theme === "dark"
-                        ? "text-gray-400 hover:text-white hover:bg-charcoal-600"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                        ? "text-gray-400 hover:text-white bg-charcoal-700 hover:bg-charcoal-600"
+                        : "text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200"
                     }
                   `}
                 >
@@ -673,13 +673,13 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                 <button
                   onClick={() => setActiveView("notes")}
                   className={`
-                    flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all
+                    flex items-center justify-center gap-1 px-2 py-4 rounded-lg text-xs font-medium transition-all
                     ${
                       activeView === "notes"
                         ? "bg-cyber-cyan text-charcoal-900 shadow-sm"
                         : theme === "dark"
-                        ? "text-gray-400 hover:text-white hover:bg-charcoal-600"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                        ? "text-gray-400 hover:text-white bg-charcoal-700 hover:bg-charcoal-600"
+                        : "text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200"
                     }
                   `}
                 >
