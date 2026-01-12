@@ -94,6 +94,20 @@ pub struct CustomTag {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Note {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub content: String,
+    #[serde(rename = "isPinned", default)]
+    pub is_pinned: bool,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppData {
     pub boards: Vec<Board>,
     #[serde(rename = "activeBoard")]
@@ -108,6 +122,8 @@ pub struct AppData {
     pub collections: Vec<Collection>,
     #[serde(rename = "customTags", default)]
     pub custom_tags: std::collections::HashMap<String, CustomTag>,
+    #[serde(default)]
+    pub notes: Vec<Note>,
     /// Last modified timestamp for sync conflict resolution (ISO 8601)
     #[serde(rename = "lastModified", default = "default_last_modified")]
     pub last_modified: String,
@@ -213,6 +229,7 @@ fn get_default_data() -> AppData {
         bookmarks: vec![],
         collections: default_collections(),
         custom_tags: std::collections::HashMap::new(),
+        notes: vec![],
         last_modified: chrono::Utc::now().to_rfc3339(),
         sync_enabled: false,
     }
