@@ -48,6 +48,7 @@ impl std::fmt::Display for SyncStatus {
 extern "C" {
     fn cloudkit_init() -> bool;
     fn cloudkit_check_account() -> bool;
+    fn cloudkit_get_account_status(out_status: *mut i32, out_error: *mut *mut c_char);
     fn cloudkit_sync(
         local_data: *const c_char,
         local_last_modified: *const c_char,
@@ -121,6 +122,51 @@ pub struct SyncStatusResult {
     pub error: Option<String>,
 }
 
+/// iCloud account status (detailed)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AccountStatus {
+    Available,
+    NoAccount,
+    Restricted,
+    CouldNotDetermine,
+    TemporarilyUnavailable,
+    Error,
+}
+
+impl From<i32> for AccountStatus {
+    fn from(value: i32) -> Self {
+        match value {
+            0 => AccountStatus::Available,
+            1 => AccountStatus::NoAccount,
+            2 => AccountStatus::Restricted,
+            3 => AccountStatus::CouldNotDetermine,
+            4 => AccountStatus::TemporarilyUnavailable,
+            5 => AccountStatus::Error,
+            _ => AccountStatus::Error,
+        }
+    }
+}
+
+impl AccountStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AccountStatus::Available => "available",
+            AccountStatus::NoAccount => "no_account",
+            AccountStatus::Restricted => "restricted",
+            AccountStatus::CouldNotDetermine => "could_not_determine",
+            AccountStatus::TemporarilyUnavailable => "temporarily_unavailable",
+            AccountStatus::Error => "error",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AccountStatusResult {
+    pub available: bool,
+    pub status: AccountStatus,
+    pub error: Option<String>,
+}
+
 /// CloudKit manager for Rust
 pub struct CloudKit;
 
@@ -145,6 +191,32 @@ impl CloudKit {
     #[cfg(not(target_os = "macos"))]
     pub fn check_account() -> bool {
         false
+    }
+
+    /// Get detailed iCloud account status
+    #[cfg(target_os = "macos")]
+    pub fn get_account_status() -> AccountStatusResult {
+        let mut status: i32 = 3; // could_not_determine
+        let mut error_ptr: *mut c_char = ptr::null_mut();
+
+        unsafe {
+            cloudkit_get_account_status(&mut status, &mut error_ptr);
+            let status = AccountStatus::from(status);
+            AccountStatusResult {
+                available: status == AccountStatus::Available,
+                status,
+                error: c_string_to_rust(error_ptr),
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub fn get_account_status() -> AccountStatusResult {
+        AccountStatusResult {
+            available: false,
+            status: AccountStatus::Error,
+            error: Some("CloudKit is only available on macOS".to_string()),
+        }
     }
 
     /// Perform a full sync operation
@@ -370,6 +442,24 @@ impl From<SyncStatusResult> for SyncStatusJson {
     fn from(result: SyncStatusResult) -> Self {
         SyncStatusJson {
             status: result.status.to_string(),
+            error: result.error,
+        }
+    }
+}
+
+/// Serde-compatible account status for the frontend
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AccountStatusJson {
+    pub available: bool,
+    pub status: String,
+    pub error: Option<String>,
+}
+
+impl From<AccountStatusResult> for AccountStatusJson {
+    fn from(result: AccountStatusResult) -> Self {
+        AccountStatusJson {
+            available: result.available,
+            status: result.status.as_str().to_string(),
             error: result.error,
         }
     }

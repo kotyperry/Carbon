@@ -71,22 +71,48 @@ public class CloudKitManager {
     }
     
     // MARK: - Account Status
-    
-    public func checkAccountStatus() async -> Bool {
+
+    public enum AccountStatus: Int32 {
+        case available = 0
+        case noAccount = 1
+        case restricted = 2
+        case couldNotDetermine = 3
+        case temporarilyUnavailable = 4
+        case error = 5
+    }
+
+    public func getAccountStatus() async -> (status: AccountStatus, error: String?) {
         do {
             let status = try await container.accountStatus()
             switch status {
             case .available:
-                return true
-            case .noAccount, .restricted, .couldNotDetermine, .temporarilyUnavailable:
-                return false
+                lastError = nil
+                return (.available, nil)
+            case .noAccount:
+                lastError = "No iCloud account is signed in."
+                return (.noAccount, lastError)
+            case .restricted:
+                lastError = "iCloud is restricted for this account."
+                return (.restricted, lastError)
+            case .couldNotDetermine:
+                lastError = "Could not determine iCloud account status."
+                return (.couldNotDetermine, lastError)
+            case .temporarilyUnavailable:
+                lastError = "iCloud is temporarily unavailable."
+                return (.temporarilyUnavailable, lastError)
             @unknown default:
-                return false
+                lastError = "Unknown iCloud account status."
+                return (.couldNotDetermine, lastError)
             }
         } catch {
             lastError = error.localizedDescription
-            return false
+            return (.error, lastError)
         }
+    }
+    
+    public func checkAccountStatus() async -> Bool {
+        let (status, _) = await getAccountStatus()
+        return status == .available
     }
     
     // MARK: - Save Operations

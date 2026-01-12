@@ -17,6 +17,13 @@ bool cloudkit_init(void);
 // Check if iCloud account is available
 bool cloudkit_check_account(void);
 
+// Get detailed iCloud account status
+// status: 0=available, 1=noAccount, 2=restricted, 3=couldNotDetermine, 4=temporarilyUnavailable, 5=error
+void cloudkit_get_account_status(
+    int32_t* out_status,
+    char** out_error
+);
+
 // Perform a full sync operation
 // All out_ parameters are output parameters that will be filled by the function
 // String outputs (out_error, out_data, out_remote_last_modified) must be freed with cloudkit_free_string

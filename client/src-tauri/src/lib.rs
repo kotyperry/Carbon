@@ -9,7 +9,7 @@ use tauri_plugin_updater::UpdaterExt;
 mod cloudkit;
 
 #[cfg(target_os = "macos")]
-use cloudkit::{CloudKit, SyncResultJson, SyncStatusJson};
+use cloudkit::{AccountStatusJson, CloudKit, SyncResultJson, SyncStatusJson};
 
 // Data structures matching the JavaScript types
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -377,10 +377,27 @@ fn check_icloud_account() -> bool {
     CloudKit::check_account()
 }
 
+/// Get detailed iCloud account status (for better UI + debugging)
+#[tauri::command]
+#[cfg(target_os = "macos")]
+fn get_icloud_account_status() -> AccountStatusJson {
+    CloudKit::get_account_status().into()
+}
+
 #[tauri::command]
 #[cfg(not(target_os = "macos"))]
 fn check_icloud_account() -> bool {
     false
+}
+
+#[tauri::command]
+#[cfg(not(target_os = "macos"))]
+fn get_icloud_account_status() -> serde_json::Value {
+    serde_json::json!({
+        "available": false,
+        "status": "offline",
+        "error": "CloudKit is only available on macOS"
+    })
 }
 
 /// Get current sync status
@@ -549,6 +566,7 @@ pub fn run() {
             install_update,
             // CloudKit sync commands
             check_icloud_account,
+            get_icloud_account_status,
             get_sync_status,
             sync_to_cloud,
             sync_from_cloud,

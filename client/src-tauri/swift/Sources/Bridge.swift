@@ -33,6 +33,30 @@ public func cloudkit_check_account() -> Bool {
     return result
 }
 
+/// Get detailed iCloud account status
+/// - Parameters:
+///   - outStatus: Account status enum as Int32
+///   - outError: Optional error/reason string (caller must free with cloudkit_free_string)
+@_cdecl("cloudkit_get_account_status")
+public func cloudkit_get_account_status(
+    outStatus: UnsafeMutablePointer<Int32>,
+    outError: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>
+) {
+    outStatus.pointee = CloudKitManager.AccountStatus.couldNotDetermine.rawValue
+    outError.pointee = nil
+
+    let semaphore = DispatchSemaphore(value: 0)
+
+    Task {
+        let (status, error) = await CloudKitManager.shared.getAccountStatus()
+        outStatus.pointee = status.rawValue
+        outError.pointee = strdup_safe(error)
+        semaphore.signal()
+    }
+
+    semaphore.wait()
+}
+
 /// Perform a full sync operation
 /// - Parameters:
 ///   - localData: JSON string of local app data
