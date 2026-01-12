@@ -425,7 +425,7 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
           }
         }}
       />
-      
+
       {/* Header - with padding for macOS traffic lights */}
       <div
         className={`p-4 pt-10 border-b ${
@@ -605,22 +605,18 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                 theme === "dark" ? "border-charcoal-700" : "border-gray-200"
               }`}
             >
-              <div
-                className={`grid grid-cols-2 gap-2 rounded-xl p-1.5 ${
-                  theme === "dark" ? "bg-charcoal-700/50" : "bg-gray-100"
-                }`}
-              >
+              <div className={`grid grid-cols-2 gap-2 rounded-xl p-1.5 `}>
                 {/* Boards Button */}
                 <button
                   onClick={() => setActiveView("boards")}
                   className={`
-                    flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all
+                    flex items-center justify-center gap-1 px-2 py-4 rounded-lg text-xs font-medium transition-all
                     ${
                       activeView === "boards"
                         ? "bg-cyber-cyan text-charcoal-900 shadow-sm"
                         : theme === "dark"
-                        ? "text-gray-400 hover:text-white hover:bg-charcoal-600"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                        ? "text-gray-400 hover:text-white bg-charcoal-700 hover:bg-charcoal-600"
+                        : "text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200"
                     }
                   `}
                 >
@@ -1220,9 +1216,7 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
           className={`
           w-full max-w-md rounded-2xl p-6 shadow-2xl
           ${
-            theme === "dark"
-              ? "glass-modal"
-              : "bg-white border border-gray-200"
+            theme === "dark" ? "glass-modal" : "bg-white border border-gray-200"
           }
         `}
           onClick={(e) => e.stopPropagation()}

@@ -8,46 +8,43 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { useBoardStore, LABELS, PRIORITIES } from "../store/boardStore";
 import Column from "./Column";
 import Card from "./Card";
 
 // AddColumnButton component with masonry positioning
-function AddColumnButton({ 
-  style, 
-  onHeightChange, 
-  isAddingColumn, 
-  setIsAddingColumn, 
-  newColumnTitle, 
-  setNewColumnTitle, 
-  handleAddColumn, 
-  theme 
+function AddColumnButton({
+  style,
+  onHeightChange,
+  isAddingColumn,
+  setIsAddingColumn,
+  newColumnTitle,
+  setNewColumnTitle,
+  handleAddColumn,
+  theme,
 }) {
   const ref = useRef(null);
-  
+
   useEffect(() => {
     if (!ref.current) return;
-    
+
     const updateHeight = () => {
       if (ref.current) {
-        onHeightChange('add-column', ref.current.offsetHeight);
+        onHeightChange("add-column", ref.current.offsetHeight);
       }
     };
-    
+
     updateHeight();
-    
+
     const resizeObserver = new ResizeObserver(updateHeight);
     resizeObserver.observe(ref.current);
-    
+
     return () => resizeObserver.disconnect();
   }, [onHeightChange]);
-  
+
   return (
-    <div ref={ref} style={style || { position: 'absolute', opacity: 0 }}>
+    <div ref={ref} style={style || { position: "absolute", opacity: 0 }}>
       {isAddingColumn ? (
         <form
           onSubmit={handleAddColumn}
@@ -86,9 +83,7 @@ function AddColumnButton({
               type="button"
               onClick={() => setIsAddingColumn(false)}
               className={`px-3 py-1.5 rounded-lg font-mono text-sm ${
-                theme === "dark"
-                  ? "hover:bg-charcoal-700"
-                  : "hover:bg-gray-100"
+                theme === "dark" ? "hover:bg-charcoal-700" : "hover:bg-gray-100"
               }`}
             >
               Cancel
@@ -147,75 +142,80 @@ function Board({ onMenuClick }) {
   const [activeType, setActiveType] = useState(null);
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState("");
-  
+
   // Masonry layout state
   const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [columnHeightsMap, setColumnHeightsMap] = useState({});
-  
+
   const COLUMN_WIDTH = 288; // w-72 = 18rem = 288px
   const GAP = 16; // gap-4 = 1rem = 16px
-  
+
   // Track container width changes
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     const updateWidth = () => {
       if (containerRef.current) {
         setContainerWidth(containerRef.current.offsetWidth);
       }
     };
-    
+
     updateWidth();
-    
+
     const resizeObserver = new ResizeObserver(updateWidth);
     resizeObserver.observe(containerRef.current);
-    
+
     return () => resizeObserver.disconnect();
   }, []);
-  
+
   // Callback to update column height when it changes
   const updateColumnHeight = useCallback((id, height) => {
-    setColumnHeightsMap(prev => {
+    setColumnHeightsMap((prev) => {
       if (prev[id] === height) return prev;
       return { ...prev, [id]: height };
     });
   }, []);
-  
+
   // Calculate masonry positions based on current heights
   const { masonryStyles, containerHeight } = useMemo(() => {
     if (!containerWidth || !board) {
       return { masonryStyles: {}, containerHeight: 0 };
     }
-    
-    const numColumns = Math.max(1, Math.floor((containerWidth + GAP) / (COLUMN_WIDTH + GAP)));
+
+    const numColumns = Math.max(
+      1,
+      Math.floor((containerWidth + GAP) / (COLUMN_WIDTH + GAP))
+    );
     const columnHeights = new Array(numColumns).fill(0);
     const styles = {};
-    
+
     // Include all columns plus add-column button
-    const itemIds = [...board.columns.map(c => c.id), 'add-column'];
-    
+    const itemIds = [...board.columns.map((c) => c.id), "add-column"];
+
     itemIds.forEach((id) => {
       // Find the shortest column
-      const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+      const shortestColumnIndex = columnHeights.indexOf(
+        Math.min(...columnHeights)
+      );
       const x = shortestColumnIndex * (COLUMN_WIDTH + GAP);
       const y = columnHeights[shortestColumnIndex];
-      
+
       styles[id] = {
-        position: 'absolute',
+        position: "absolute",
         left: x,
         top: y,
         width: COLUMN_WIDTH,
       };
-      
+
       // Use tracked height or default
       const itemHeight = columnHeightsMap[id] || 150;
       columnHeights[shortestColumnIndex] += itemHeight + GAP;
     });
-    
-    return { 
-      masonryStyles: styles, 
-      containerHeight: Math.max(...columnHeights, 0) 
+
+    return {
+      masonryStyles: styles,
+      containerHeight: Math.max(...columnHeights, 0),
     };
   }, [containerWidth, board, columnHeightsMap]);
 
@@ -771,20 +771,25 @@ function Board({ onMenuClick }) {
               - When window shrinks, columns wrap under the shortest column
               - Add Column button appears below shortest column
             */}
-            <div 
+            <div
               ref={containerRef}
               className="relative pb-4"
-              style={{ minHeight: containerHeight || 'auto' }}
+              style={{ minHeight: containerHeight || "auto" }}
             >
               <SortableContext
                 items={board.columns.map((c) => c.id)}
                 strategy={rectSortingStrategy}
               >
                 {board.columns.map((column) => (
-                  <Column 
+                  <Column
                     key={column.id}
-                    column={column} 
-                    masonryStyle={masonryStyles[column.id] || { position: 'absolute', opacity: 0 }}
+                    column={column}
+                    masonryStyle={
+                      masonryStyles[column.id] || {
+                        position: "absolute",
+                        opacity: 0,
+                      }
+                    }
                     onHeightChange={updateColumnHeight}
                   />
                 ))}
@@ -792,7 +797,7 @@ function Board({ onMenuClick }) {
 
               {/* Add Column Button */}
               <AddColumnButton
-                style={masonryStyles['add-column']}
+                style={masonryStyles["add-column"]}
                 onHeightChange={updateColumnHeight}
                 isAddingColumn={isAddingColumn}
                 setIsAddingColumn={setIsAddingColumn}
