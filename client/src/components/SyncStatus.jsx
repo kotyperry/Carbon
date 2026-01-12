@@ -83,13 +83,13 @@ const AlertIcon = () => (
 );
 
 export default function SyncStatus() {
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const {
     syncEnabled,
     syncStatus,
     syncError,
-    lastModified,
+    lastSyncedAt,
     iCloudAvailable,
     iCloudStatus,
     iCloudStatusError,
@@ -151,8 +151,8 @@ export default function SyncStatus() {
   };
 
   const formatLastModified = () => {
-    if (!lastModified) return "Never";
-    const date = new Date(lastModified);
+    if (!lastSyncedAt) return "Never";
+    const date = new Date(lastSyncedAt);
     const now = new Date();
     const diff = now - date;
 
@@ -163,36 +163,30 @@ export default function SyncStatus() {
   };
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setShowDropdown(!showDropdown)}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors
-          hover:bg-neutral-800/50 ${getStatusColor()}`}
-        title={`iCloud Sync: ${getStatusText()}`}
+    <div
+      className="relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <div
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium select-none ${getStatusColor()}`}
+        aria-label={`iCloud Sync: ${getStatusText()}`}
       >
         {getStatusIcon()}
         <span className="hidden sm:inline">{getStatusText()}</span>
-      </button>
+      </div>
 
-      {showDropdown && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowDropdown(false)}
-          />
-
-          {/* Dropdown */}
-          <div className="absolute right-0 top-full mt-2 w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden">
-            <div className="p-3 border-b border-neutral-700">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-neutral-200">
-                  iCloud Sync
-                </span>
-                <button
-                  onClick={toggleSyncEnabled}
-                  disabled={!iCloudAvailable}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+      {showTooltip && (
+        <div className="absolute right-0 bottom-full mb-2 w-64 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50 overflow-hidden">
+          <div className="p-3 border-b border-neutral-700">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-neutral-200">
+                iCloud Sync
+              </span>
+              <button
+                onClick={toggleSyncEnabled}
+                disabled={!iCloudAvailable}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors
                     ${
                       syncEnabled && iCloudAvailable
                         ? "bg-blue-500"
@@ -203,64 +197,63 @@ export default function SyncStatus() {
                         ? "opacity-50 cursor-not-allowed"
                         : "cursor-pointer"
                     }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
                       ${
                         syncEnabled && iCloudAvailable
                           ? "translate-x-4.5"
                           : "translate-x-1"
                       }`}
-                    style={{
-                      transform:
-                        syncEnabled && iCloudAvailable
-                          ? "translateX(18px)"
-                          : "translateX(4px)",
-                    }}
-                  />
-                </button>
-              </div>
-
-              {!iCloudAvailable && (
-                <p className="text-xs text-amber-400">
-                  {iCloudStatusError
-                    ? iCloudStatusError
-                    : iCloudStatus
-                    ? `iCloud not available (${iCloudStatus}).`
-                    : "iCloud not available."}
-                </p>
-              )}
-
-              {iCloudAvailable && syncEnabled && (
-                <p className="text-xs text-neutral-400">
-                  Your data syncs automatically across all your devices.
-                </p>
-              )}
+                  style={{
+                    transform:
+                      syncEnabled && iCloudAvailable
+                        ? "translateX(18px)"
+                        : "translateX(4px)",
+                  }}
+                />
+              </button>
             </div>
 
-            {syncEnabled && iCloudAvailable && (
-              <>
-                <div className="p-3 border-b border-neutral-700">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-400">Status</span>
-                    <span className={getStatusColor()}>{getStatusText()}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-neutral-400">Last sync</span>
-                    <span className="text-neutral-300">
-                      {formatLastModified()}
-                    </span>
-                  </div>
-                  {syncError && (
-                    <p className="text-xs text-red-400 mt-2">{syncError}</p>
-                  )}
-                </div>
+            {!iCloudAvailable && (
+              <p className="text-xs text-amber-400">
+                {iCloudStatusError
+                  ? iCloudStatusError
+                  : iCloudStatus
+                  ? `iCloud not available (${iCloudStatus}).`
+                  : "iCloud not available."}
+              </p>
+            )}
 
-                {/* Auto-sync is enabled; no manual controls */}
-              </>
+            {iCloudAvailable && syncEnabled && (
+              <p className="text-xs text-neutral-400">
+                Your data syncs automatically across all your devices.
+              </p>
             )}
           </div>
-        </>
+
+          {syncEnabled && iCloudAvailable && (
+            <>
+              <div className="p-3 border-b border-neutral-700">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-neutral-400">Status</span>
+                  <span className={getStatusColor()}>{getStatusText()}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs mt-1">
+                  <span className="text-neutral-400">Last sync</span>
+                  <span className="text-neutral-300">
+                    {formatLastModified()}
+                  </span>
+                </div>
+                {syncError && (
+                  <p className="text-xs text-red-400 mt-2">{syncError}</p>
+                )}
+              </div>
+
+              {/* Auto-sync is enabled; no manual controls */}
+            </>
+          )}
+        </div>
       )}
     </div>
   );

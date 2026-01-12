@@ -1,6 +1,20 @@
 import Foundation
 import CloudKit
 
+private func parseISO8601(_ s: String) -> Date? {
+    // JS `new Date().toISOString()` includes fractional seconds (e.g. 2026-01-12T12:34:56.789Z)
+    // ISO8601DateFormatter does NOT parse fractional seconds unless enabled, so we try both.
+    let withFractional = ISO8601DateFormatter()
+    withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let d = withFractional.date(from: s) {
+        return d
+    }
+
+    let withoutFractional = ISO8601DateFormatter()
+    withoutFractional.formatOptions = [.withInternetDateTime]
+    return withoutFractional.date(from: s)
+}
+
 /// Manages synchronization logic and conflict resolution
 public class SyncManager {
     public static let shared = SyncManager()
@@ -32,8 +46,8 @@ public class SyncManager {
         // Determine which data is newer
         if let remoteData = remoteData,
            let remoteModified = remoteLastModified,
-           let remoteDate = ISO8601DateFormatter().date(from: remoteModified),
-           let localDate = ISO8601DateFormatter().date(from: localLastModified) {
+           let remoteDate = parseISO8601(remoteModified),
+           let localDate = parseISO8601(localLastModified) {
             
             if remoteDate > localDate {
                 // Remote is newer - return remote data to update local

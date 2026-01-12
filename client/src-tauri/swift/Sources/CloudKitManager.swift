@@ -1,6 +1,17 @@
 import Foundation
 import CloudKit
 
+private func parseISO8601(_ s: String) -> Date? {
+    let withFractional = ISO8601DateFormatter()
+    withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let d = withFractional.date(from: s) {
+        return d
+    }
+    let withoutFractional = ISO8601DateFormatter()
+    withoutFractional.formatOptions = [.withInternetDateTime]
+    return withoutFractional.date(from: s)
+}
+
 /// Manages all CloudKit operations for Carbon app
 public class CloudKitManager {
     public static let shared = CloudKitManager()
@@ -142,8 +153,8 @@ public class CloudKitManager {
             
             // Check for conflicts using last modified timestamp
             if let existingModified = record["lastModified"] as? String,
-               let existingDate = ISO8601DateFormatter().date(from: existingModified),
-               let newDate = ISO8601DateFormatter().date(from: lastModified) {
+               let existingDate = parseISO8601(existingModified),
+               let newDate = parseISO8601(lastModified) {
                 // Last write wins - only save if our data is newer
                 if existingDate > newDate {
                     currentStatus = .synced

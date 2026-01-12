@@ -25,6 +25,7 @@ if (isTauri()) {
 // Auto sync timers/listeners (module-scoped so we don't create multiple intervals)
 let autoSyncIntervalId = null;
 let syncListenersInstalled = false;
+let lastLocalChangeAt = 0;
 
 // Debounce helper for sync operations
 const debounce = (fn, delay) => {
@@ -212,6 +213,7 @@ export const useBoardStore = create((set, get) => ({
   syncStatus: "idle", // 'idle', 'syncing', 'synced', 'error', 'offline'
   syncError: null,
   lastModified: new Date().toISOString(),
+  lastSyncedAt: null, // last time a sync completed successfully (push or pull)
   iCloudAvailable: false,
   iCloudStatus: null, // 'available' | 'no_account' | 'restricted' | 'could_not_determine' | 'temporarily_unavailable' | 'error'
   iCloudStatusError: null,
@@ -326,6 +328,8 @@ export const useBoardStore = create((set, get) => ({
       });
 
       set({ lastModified });
+      // Mark local change time so background polling doesn't fight the debounced push
+      lastLocalChangeAt = Date.now();
 
       // Trigger sync if enabled (debounced)
       if (syncEnabled) {
@@ -383,7 +387,9 @@ export const useBoardStore = create((set, get) => ({
       const s = useBoardStore.getState();
       if (!s.syncEnabled || !s.iCloudAvailable) return;
       if (s.syncStatus === "syncing") return;
-      s.performSync();
+      // If the user just changed data locally, let the debounced push handle it.
+      if (Date.now() - lastLocalChangeAt < 3500) return;
+      s.performSync({ quiet: true });
     }, 2000);
   },
 
@@ -1444,7 +1450,8 @@ export const useBoardStore = create((set, get) => ({
   },
 
   // Perform sync with iCloud
-  performSync: async () => {
+  performSync: async (options = {}) => {
+    const quiet = !!options.quiet;
     const {
       syncEnabled,
       iCloudAvailable,
@@ -1463,7 +1470,12 @@ export const useBoardStore = create((set, get) => ({
       return;
     }
 
-    set({ syncStatus: "syncing", syncError: null });
+    // For background polling, keep the UI stable (avoid flashing between "Syncing" and "Synced")
+    if (!quiet) {
+      set({ syncStatus: "syncing", syncError: null });
+    } else {
+      set({ syncError: null });
+    }
 
     try {
       const data = {
@@ -1502,6 +1514,7 @@ export const useBoardStore = create((set, get) => ({
               activeView: remoteData.activeView || "boards",
               lastModified:
                 result.remoteLastModified || remoteData.lastModified,
+              lastSyncedAt: new Date().toISOString(),
               syncStatus: "synced",
               syncError: null,
             });
@@ -1529,7 +1542,11 @@ export const useBoardStore = create((set, get) => ({
             });
           }
         } else {
-          set({ syncStatus: "synced", syncError: null });
+          set({
+            syncStatus: "synced",
+            syncError: null,
+            lastSyncedAt: new Date().toISOString(),
+          });
         }
       } else {
         set({ syncStatus: "error", syncError: result.error || "Sync failed" });
