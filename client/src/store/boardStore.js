@@ -22,6 +22,10 @@ if (isTauri()) {
   });
 }
 
+// Auto sync timers/listeners (module-scoped so we don't create multiple intervals)
+let autoSyncIntervalId = null;
+let syncListenersInstalled = false;
+
 // Debounce helper for sync operations
 const debounce = (fn, delay) => {
   let timeoutId;
@@ -276,8 +280,15 @@ export const useBoardStore = create((set, get) => ({
       );
 
       // If sync is enabled and iCloud is available, perform initial sync
+      // Always install listeners once on macOS so changes on other devices can be pulled in.
+      get().ensureSyncEventListeners();
+
       if (data.syncEnabled && iCloudAvailable) {
+        // Start background sync + do an initial sync immediately.
+        get().startAutoSync();
         get().performSync();
+      } else {
+        get().stopAutoSync();
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -332,6 +343,56 @@ export const useBoardStore = create((set, get) => ({
       await store.performSync();
     }
   }, 2000),
+
+  // Install focus/visibility listeners once to keep devices in sync
+  ensureSyncEventListeners: () => {
+    if (!isTauri() || !isMacOS()) return;
+    if (syncListenersInstalled) return;
+    syncListenersInstalled = true;
+
+    const onWakeOrFocus = async () => {
+      const store = useBoardStore.getState();
+      // Refresh account availability (network / iCloud state can change)
+      await store.checkiCloudAvailability();
+      if (store.syncEnabled && store.iCloudAvailable) {
+        store.startAutoSync();
+        store.performSync();
+      }
+    };
+
+    window.addEventListener("focus", onWakeOrFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        onWakeOrFocus();
+      }
+    });
+  },
+
+  // Start/stop background auto-sync (polling)
+  startAutoSync: () => {
+    if (!isTauri() || !isMacOS()) return;
+
+    const store = useBoardStore.getState();
+    if (!store.syncEnabled || !store.iCloudAvailable) return;
+
+    // Already running
+    if (autoSyncIntervalId) return;
+
+    // Poll for remote changes. performSync() is bidirectional (LWW), so it can pull remote updates too.
+    autoSyncIntervalId = setInterval(() => {
+      const s = useBoardStore.getState();
+      if (!s.syncEnabled || !s.iCloudAvailable) return;
+      if (s.syncStatus === "syncing") return;
+      s.performSync();
+    }, 5000);
+  },
+
+  stopAutoSync: () => {
+    if (autoSyncIntervalId) {
+      clearInterval(autoSyncIntervalId);
+      autoSyncIntervalId = null;
+    }
+  },
 
   // Get current board
   getCurrentBoard: () => {
@@ -1375,7 +1436,10 @@ export const useBoardStore = create((set, get) => ({
 
     // If enabling sync, perform initial sync
     if (newSyncEnabled) {
+      get().startAutoSync();
       await get().performSync();
+    } else {
+      get().stopAutoSync();
     }
   },
 

@@ -2,8 +2,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { relaunch } from '@tauri-apps/plugin-process';
 
-// Check for updates every 5 minutes
-const UPDATE_CHECK_INTERVAL = 5 * 60 * 1000;
+// Check for updates every 2 minutes
+const UPDATE_CHECK_INTERVAL = 2 * 60 * 1000;
 
 function UpdateNotification() {
   const [updateInfo, setUpdateInfo] = useState(null);
@@ -61,7 +61,7 @@ function UpdateNotification() {
   }, [checkForUpdates]);
 
   useEffect(() => {
-    // Set up periodic update checks every 5 minutes
+    // Set up periodic update checks every 2 minutes
     const intervalId = setInterval(() => {
       // Only check if not currently downloading and notification isn't showing
       if (!isDownloading && !updateInfo && !isChecking) {
