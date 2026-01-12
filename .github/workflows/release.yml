@@ -74,6 +74,29 @@ jobs:
           # Allow codesign to access the certificate
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
+      - name: Install Apple Provisioning Profile (required for CloudKit entitlements)
+        env:
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+        run: |
+          if [ -z "$APPLE_PROVISIONING_PROFILE" ]; then
+            echo "APPLE_PROVISIONING_PROFILE secret is not set. CloudKit builds will not launch (AMFI: No matching profile found)."
+            exit 1
+          fi
+
+          PROFILE_PATH="$RUNNER_TEMP/carbon.provisionprofile"
+          PROFILE_PLIST_PATH="$RUNNER_TEMP/carbon.provisionprofile.plist"
+
+          echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode > "$PROFILE_PATH"
+
+          # Extract UUID so the profile is discoverable by taskgated on the build machine
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST_PATH"
+          UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" "$PROFILE_PLIST_PATH")
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.provisionprofile"
+
+          echo "Installed provisioning profile UUID: $UUID"
+
       - name: Build and Release Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -81,6 +104,7 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
