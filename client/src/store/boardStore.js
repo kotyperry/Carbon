@@ -384,7 +384,7 @@ export const useBoardStore = create((set, get) => ({
       if (!s.syncEnabled || !s.iCloudAvailable) return;
       if (s.syncStatus === "syncing") return;
       s.performSync();
-    }, 5000);
+    }, 2000);
   },
 
   stopAutoSync: () => {

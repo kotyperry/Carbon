@@ -94,8 +94,6 @@ export default function SyncStatus() {
     iCloudStatus,
     iCloudStatusError,
     toggleSyncEnabled,
-    performSync,
-    pullFromCloud,
   } = useBoardStore();
 
   // Don't render if not on macOS (check via iCloudAvailable being checked)
@@ -258,30 +256,7 @@ export default function SyncStatus() {
                   )}
                 </div>
 
-                <div className="p-2">
-                  <button
-                    onClick={() => {
-                      performSync();
-                      setShowDropdown(false);
-                    }}
-                    disabled={syncStatus === "syncing"}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 rounded-md transition-colors disabled:opacity-50"
-                  >
-                    <SyncIcon spinning={syncStatus === "syncing"} />
-                    Sync Now
-                  </button>
-                  <button
-                    onClick={() => {
-                      pullFromCloud();
-                      setShowDropdown(false);
-                    }}
-                    disabled={syncStatus === "syncing"}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 rounded-md transition-colors disabled:opacity-50"
-                  >
-                    <CloudIcon />
-                    Pull from iCloud
-                  </button>
-                </div>
+                {/* Auto-sync is enabled; no manual controls */}
               </>
             )}
           </div>

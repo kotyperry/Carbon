@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { getVersion } from '@tauri-apps/api/app';
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   DndContext,
   closestCenter,
@@ -8,20 +8,35 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { useBoardStore, DEFAULT_BOOKMARK_TAGS } from '../store/boardStore';
-import TagContextMenu from './TagContextMenu';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useBoardStore, DEFAULT_BOOKMARK_TAGS } from "../store/boardStore";
+import TagContextMenu from "./TagContextMenu";
+import SyncStatus from "./SyncStatus";
 
 // Sortable Board Item Component
-function SortableBoardItem({ board, isActive, theme, activeView, onSelect, onEdit, onDelete, boardsLength, editingId, editName, setEditName, handleSaveEdit, setEditingId }) {
+function SortableBoardItem({
+  board,
+  isActive,
+  theme,
+  activeView,
+  onSelect,
+  onEdit,
+  onDelete,
+  boardsLength,
+  editingId,
+  editName,
+  setEditName,
+  handleSaveEdit,
+  setEditingId,
+}) {
   const {
     attributes,
     listeners,
@@ -44,11 +59,12 @@ function SortableBoardItem({ board, isActive, theme, activeView, onSelect, onEdi
       onClick={() => onSelect(board.id)}
       className={`
         group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
-        ${isActive && activeView === 'boards'
-          ? 'bg-cyber-cyan/20 text-cyber-cyan'
-          : theme === 'dark'
-            ? 'hover:bg-charcoal-700 text-gray-300'
-            : 'hover:bg-gray-100 text-gray-700'
+        ${
+          isActive && activeView === "boards"
+            ? "bg-cyber-cyan/20 text-cyber-cyan"
+            : theme === "dark"
+            ? "hover:bg-charcoal-700 text-gray-300"
+            : "hover:bg-gray-100 text-gray-700"
         }
       `}
     >
@@ -56,17 +72,33 @@ function SortableBoardItem({ board, isActive, theme, activeView, onSelect, onEdi
       <div
         {...attributes}
         {...listeners}
-        className={`cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded ${theme === 'dark' ? 'hover:bg-charcoal-600' : 'hover:bg-gray-200'}`}
+        className={`cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded ${
+          theme === "dark" ? "hover:bg-charcoal-600" : "hover:bg-gray-200"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <svg className="w-3 h-3 opacity-50" fill="currentColor" viewBox="0 0 24 24">
+        <svg
+          className="w-3 h-3 opacity-50"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path d="M8 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM8 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM14 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM14 12a2 2 0 1 1-4 0 2 2 0 0 1 4 0zM14 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" />
         </svg>
       </div>
 
       {/* Board Icon */}
-      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+      <svg
+        className="w-4 h-4 flex-shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+        />
       </svg>
 
       {editingId === board.id ? (
@@ -76,13 +108,13 @@ function SortableBoardItem({ board, isActive, theme, activeView, onSelect, onEdi
           onChange={(e) => setEditName(e.target.value)}
           onBlur={() => handleSaveEdit(board.id)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSaveEdit(board.id);
-            if (e.key === 'Escape') setEditingId(null);
+            if (e.key === "Enter") handleSaveEdit(board.id);
+            if (e.key === "Escape") setEditingId(null);
           }}
           autoFocus
           className={`
             flex-1 px-2 py-0.5 rounded text-sm bg-transparent border
-            ${theme === 'dark' ? 'border-charcoal-600' : 'border-gray-300'}
+            ${theme === "dark" ? "border-charcoal-600" : "border-gray-300"}
           `}
           onClick={(e) => e.stopPropagation()}
         />
@@ -101,8 +133,18 @@ function SortableBoardItem({ board, isActive, theme, activeView, onSelect, onEdi
             className="p-1 rounded hover:bg-white/10"
             title="Rename board"
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+              />
             </svg>
           </button>
           {boardsLength > 1 && (
@@ -111,8 +153,18 @@ function SortableBoardItem({ board, isActive, theme, activeView, onSelect, onEdi
               className="p-1 rounded hover:bg-red-500/20 text-red-400"
               title="Delete board"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
               </svg>
             </button>
           )}
@@ -151,18 +203,18 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
   const BOOKMARK_TAGS = getBookmarkTags();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [newBoardName, setNewBoardName] = useState('');
+  const [newBoardName, setNewBoardName] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState('');
+  const [editName, setEditName] = useState("");
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
-  const [newCollectionName, setNewCollectionName] = useState('');
+  const [newCollectionName, setNewCollectionName] = useState("");
   const [deletingBoard, setDeletingBoard] = useState(null);
-  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [tagContextMenu, setTagContextMenu] = useState(null); // { tagKey, x, y }
 
   const allTags = getAllTags();
   const stats = getBookmarkStats();
-  const [appVersion, setAppVersion] = useState('');
+  const [appVersion, setAppVersion] = useState("");
 
   // DnD sensors for board reordering
   const sensors = useSensors(
@@ -177,7 +229,9 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
   );
 
   useEffect(() => {
-    getVersion().then(setAppVersion).catch(() => setAppVersion('dev'));
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion("dev"));
   }, []);
 
   // Notify parent when collapsed state changes
@@ -188,10 +242,10 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
   // Handle board drag end
   const handleBoardDragEnd = (event) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
-      const oldIndex = boards.findIndex(b => b.id === active.id);
-      const newIndex = boards.findIndex(b => b.id === over.id);
+      const oldIndex = boards.findIndex((b) => b.id === active.id);
+      const newIndex = boards.findIndex((b) => b.id === over.id);
       reorderBoards(active.id, newIndex);
     }
   };
@@ -200,7 +254,7 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
     e.preventDefault();
     if (newBoardName.trim()) {
       await createBoard(newBoardName.trim());
-      setNewBoardName('');
+      setNewBoardName("");
       setIsCreating(false);
     }
   };
@@ -215,15 +269,15 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
       await updateBoard(boardId, { name: editName.trim() });
     }
     setEditingId(null);
-    setEditName('');
+    setEditName("");
   };
 
   const handleDeleteBoard = (boardId, e) => {
     e.stopPropagation();
     if (boards.length > 1) {
-      const board = boards.find(b => b.id === boardId);
+      const board = boards.find((b) => b.id === boardId);
       setDeletingBoard(board);
-      setDeleteConfirmName('');
+      setDeleteConfirmName("");
     }
   };
 
@@ -231,30 +285,30 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
     if (deletingBoard && deleteConfirmName === deletingBoard.name) {
       await deleteBoard(deletingBoard.id);
       setDeletingBoard(null);
-      setDeleteConfirmName('');
+      setDeleteConfirmName("");
     }
   };
 
   const cancelDeleteBoard = () => {
     setDeletingBoard(null);
-    setDeleteConfirmName('');
+    setDeleteConfirmName("");
   };
 
   const handleBoardSelect = (boardId) => {
     setActiveBoard(boardId);
-    setActiveView('boards');
+    setActiveView("boards");
     if (onClose) onClose();
   };
 
   const handleCollectionSelect = (collectionId) => {
     setActiveCollection(collectionId);
-    setActiveView('bookmarks');
+    setActiveView("bookmarks");
     if (onClose) onClose();
   };
 
   const handleTagSelect = (tag) => {
     setActiveTag(tag);
-    setActiveView('bookmarks');
+    setActiveView("bookmarks");
     if (onClose) onClose();
   };
 
@@ -276,36 +330,66 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
     e.preventDefault();
     if (newCollectionName.trim()) {
       await addCollection(newCollectionName.trim());
-      setNewCollectionName('');
+      setNewCollectionName("");
       setIsCreatingCollection(false);
     }
   };
 
   const getCollectionIcon = (icon) => {
     switch (icon) {
-      case 'star':
+      case "star":
         return (
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
           </svg>
         );
-      case 'archive':
+      case "archive":
         return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+            />
           </svg>
         );
-      case 'folder':
+      case "folder":
         return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+            />
           </svg>
         );
-      case 'bookmark':
+      case "bookmark":
       default:
         return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+            />
           </svg>
         );
     }
@@ -314,53 +398,128 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
   const sidebar = (
     <aside
       className={`
-        ${isCollapsed ? 'lg:w-20' : 'lg:w-72'}
-        ${theme === 'dark' ? 'bg-charcoal-800 border-charcoal-700' : 'bg-white border-gray-200'}
+        ${isCollapsed ? "lg:w-20" : "lg:w-72"}
+        ${
+          theme === "dark"
+            ? "bg-charcoal-800 border-charcoal-700"
+            : "bg-white border-gray-200"
+        }
         border-r flex flex-col transition-all duration-300 z-30
         
         /* Mobile: fixed overlay sidebar */
         fixed inset-y-0 left-0 w-72
-        transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        transform ${isOpen ? "translate-x-0" : "-translate-x-full"}
         
         /* Desktop: static sidebar */
         lg:relative lg:translate-x-0
       `}
     >
       {/* Header - with padding for macOS traffic lights */}
-      <div className={`p-4 pt-10 border-b ${isCollapsed ? 'lg:px-3 lg:flex lg:justify-center' : ''} ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
-        <div className={`flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
+      <div
+        className={`p-4 pt-10 border-b ${
+          isCollapsed ? "lg:px-3 lg:flex lg:justify-center" : ""
+        } ${theme === "dark" ? "border-charcoal-700" : "border-gray-200"}`}
+      >
+        <div
+          className={`flex items-center ${
+            isCollapsed ? "lg:justify-center" : "justify-between"
+          }`}
+        >
           {(!isCollapsed || window.innerWidth < 1024) && (
             <div className="flex items-center gap-2">
               <svg className="w-7 h-7" viewBox="0 0 100 100">
                 <defs>
-                  <linearGradient id="logoBg" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style={{stopColor:'#1a1a1a'}}/>
-                    <stop offset="100%" style={{stopColor:'#0f0f0f'}}/>
+                  <linearGradient
+                    id="logoBg"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" style={{ stopColor: "#1a1a1a" }} />
+                    <stop offset="100%" style={{ stopColor: "#0f0f0f" }} />
                   </linearGradient>
-                  <linearGradient id="logoBar1" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style={{stopColor:'#33e0ff'}}/>
-                    <stop offset="100%" style={{stopColor:'#00a8cc'}}/>
+                  <linearGradient
+                    id="logoBar1"
+                    x1="0%"
+                    y1="0%"
+                    x2="0%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" style={{ stopColor: "#33e0ff" }} />
+                    <stop offset="100%" style={{ stopColor: "#00a8cc" }} />
                   </linearGradient>
-                  <linearGradient id="logoBar2" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style={{stopColor:'#00d4ff'}}/>
-                    <stop offset="100%" style={{stopColor:'#0090b0'}}/>
+                  <linearGradient
+                    id="logoBar2"
+                    x1="0%"
+                    y1="0%"
+                    x2="0%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" style={{ stopColor: "#00d4ff" }} />
+                    <stop offset="100%" style={{ stopColor: "#0090b0" }} />
                   </linearGradient>
-                  <linearGradient id="logoBar3" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style={{stopColor:'#00c4ef'}}/>
-                    <stop offset="100%" style={{stopColor:'#007a99'}}/>
+                  <linearGradient
+                    id="logoBar3"
+                    x1="0%"
+                    y1="0%"
+                    x2="0%"
+                    y2="100%"
+                  >
+                    <stop offset="0%" style={{ stopColor: "#00c4ef" }} />
+                    <stop offset="100%" style={{ stopColor: "#007a99" }} />
                   </linearGradient>
-                  <filter id="logoShadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.4"/>
+                  <filter
+                    id="logoShadow"
+                    x="-20%"
+                    y="-20%"
+                    width="140%"
+                    height="140%"
+                  >
+                    <feDropShadow
+                      dx="0"
+                      dy="1"
+                      stdDeviation="1"
+                      floodColor="#000"
+                      floodOpacity="0.4"
+                    />
                   </filter>
                 </defs>
-                <rect width="100" height="100" rx="20" fill="url(#logoBg)"/>
+                <rect width="100" height="100" rx="20" fill="url(#logoBg)" />
                 <g filter="url(#logoShadow)">
-                  <rect x="18" y="22" width="18" height="56" rx="4" fill="url(#logoBar1)"/>
-                  <rect x="41" y="32" width="18" height="36" rx="4" fill="url(#logoBar2)"/>
-                  <rect x="64" y="22" width="18" height="46" rx="4" fill="url(#logoBar3)"/>
+                  <rect
+                    x="18"
+                    y="22"
+                    width="18"
+                    height="56"
+                    rx="4"
+                    fill="url(#logoBar1)"
+                  />
+                  <rect
+                    x="41"
+                    y="32"
+                    width="18"
+                    height="36"
+                    rx="4"
+                    fill="url(#logoBar2)"
+                  />
+                  <rect
+                    x="64"
+                    y="22"
+                    width="18"
+                    height="46"
+                    rx="4"
+                    fill="url(#logoBar3)"
+                  />
                 </g>
               </svg>
-              <span className={`font-semibold text-lg tracking-tight ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>Carbon</span>
+              <span
+                className={`font-semibold text-lg tracking-tight ${
+                  theme === "dark" ? "text-gray-200" : "text-gray-800"
+                }`}
+              >
+                Carbon
+              </span>
             </div>
           )}
           <div className="flex items-center gap-2">
@@ -369,12 +528,26 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
               onClick={onClose}
               className={`
                 p-2 rounded-lg transition-colors lg:hidden
-                ${theme === 'dark' ? 'hover:bg-charcoal-700' : 'hover:bg-gray-100'}
+                ${
+                  theme === "dark"
+                    ? "hover:bg-charcoal-700"
+                    : "hover:bg-gray-100"
+                }
               `}
               title="Close sidebar"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
             {/* Collapse button - desktop only */}
@@ -382,17 +555,28 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
               onClick={() => setIsCollapsed(!isCollapsed)}
               className={`
                 p-2 rounded-lg transition-colors hidden lg:block
-                ${theme === 'dark' ? 'hover:bg-charcoal-700' : 'hover:bg-gray-100'}
+                ${
+                  theme === "dark"
+                    ? "hover:bg-charcoal-700"
+                    : "hover:bg-gray-100"
+                }
               `}
-              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <svg
-                className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
+                className={`w-5 h-5 transition-transform ${
+                  isCollapsed ? "rotate-180" : ""
+                }`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                />
               </svg>
             </button>
           </div>
@@ -401,23 +585,45 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        {(!isCollapsed || window.innerWidth < 1024) ? (
+        {!isCollapsed || window.innerWidth < 1024 ? (
           <>
             {/* View Switcher */}
-            <div className={`p-2 border-b ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
-              <div className={`grid grid-cols-3 gap-2 rounded-xl p-1.5 ${theme === 'dark' ? 'bg-charcoal-700/50' : 'bg-gray-100'}`}>
+            <div
+              className={`p-2 border-b ${
+                theme === "dark" ? "border-charcoal-700" : "border-gray-200"
+              }`}
+            >
+              <div
+                className={`grid grid-cols-3 gap-2 rounded-xl p-1.5 ${
+                  theme === "dark" ? "bg-charcoal-700/50" : "bg-gray-100"
+                }`}
+              >
                 {/* Boards Button */}
                 <button
-                  onClick={() => setActiveView('boards')}
+                  onClick={() => setActiveView("boards")}
                   className={`
                     flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all
-                    ${activeView === 'boards'
-                      ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
-                      : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-charcoal-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}
+                    ${
+                      activeView === "boards"
+                        ? "bg-cyber-cyan text-charcoal-900 shadow-sm"
+                        : theme === "dark"
+                        ? "text-gray-400 hover:text-white hover:bg-charcoal-600"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }
                   `}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                    />
                   </svg>
                   <span>Boards</span>
                 </button>
@@ -425,34 +631,62 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                 {/* Bookmarks Button */}
                 <button
                   onClick={() => {
-                    setActiveView('bookmarks');
-                    setActiveCollection('all');
+                    setActiveView("bookmarks");
+                    setActiveCollection("all");
                   }}
                   className={`
                     flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all
-                    ${activeView === 'bookmarks'
-                      ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
-                      : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-charcoal-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}
+                    ${
+                      activeView === "bookmarks"
+                        ? "bg-cyber-cyan text-charcoal-900 shadow-sm"
+                        : theme === "dark"
+                        ? "text-gray-400 hover:text-white hover:bg-charcoal-600"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }
                   `}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                    />
                   </svg>
                   <span>Bookmarks</span>
                 </button>
 
                 {/* Notes Button */}
                 <button
-                  onClick={() => setActiveView('notes')}
+                  onClick={() => setActiveView("notes")}
                   className={`
                     flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all
-                    ${activeView === 'notes'
-                      ? 'bg-cyber-cyan text-charcoal-900 shadow-sm'
-                      : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-charcoal-600' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}
+                    ${
+                      activeView === "notes"
+                        ? "bg-cyber-cyan text-charcoal-900 shadow-sm"
+                        : theme === "dark"
+                        ? "text-gray-400 hover:text-white hover:bg-charcoal-600"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }
                   `}
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                   <span>Notes</span>
                 </button>
@@ -460,10 +694,14 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
             </div>
 
             {/* Boards Section */}
-            {activeView === 'boards' && (
+            {activeView === "boards" && (
               <div className="p-2">
                 <div className="flex items-center justify-between px-2 py-2 mb-2">
-                  <span className={`text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                  <span
+                    className={`text-xs font-medium uppercase tracking-wider ${
+                      theme === "dark" ? "text-gray-500" : "text-gray-400"
+                    }`}
+                  >
                     Boards
                   </span>
                   <button
@@ -471,8 +709,18 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                     className="p-1 rounded hover:bg-cyber-cyan/20 text-cyber-cyan"
                     title="Create new board"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -488,9 +736,11 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                       autoFocus
                       className={`
                         w-full px-3 py-2 rounded-lg text-sm
-                        ${theme === 'dark' 
-                          ? 'bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500' 
-                          : 'bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400'}
+                        ${
+                          theme === "dark"
+                            ? "bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500"
+                            : "bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400"
+                        }
                         border focus:border-cyber-cyan
                       `}
                       onBlur={() => {
@@ -507,7 +757,7 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                   onDragEnd={handleBoardDragEnd}
                 >
                   <SortableContext
-                    items={boards.map(b => b.id)}
+                    items={boards.map((b) => b.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-1">
@@ -536,12 +786,16 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
             )}
 
             {/* Bookmarks Section */}
-            {activeView === 'bookmarks' && (
+            {activeView === "bookmarks" && (
               <div className="p-2">
                 {/* Collections */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between px-2 py-2 mb-2">
-                    <span className={`text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <span
+                      className={`text-xs font-medium uppercase tracking-wider ${
+                        theme === "dark" ? "text-gray-500" : "text-gray-400"
+                      }`}
+                    >
                       Collections
                     </span>
                     <button
@@ -549,15 +803,28 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                       className="p-1 rounded hover:bg-cyber-cyan/20 text-cyber-cyan"
                       title="Create new collection"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
                       </svg>
                     </button>
                   </div>
 
                   {/* New Collection Form */}
                   {isCreatingCollection && (
-                    <form onSubmit={handleCreateCollection} className="mb-2 px-2">
+                    <form
+                      onSubmit={handleCreateCollection}
+                      className="mb-2 px-2"
+                    >
                       <input
                         type="text"
                         value={newCollectionName}
@@ -566,13 +833,16 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                         autoFocus
                         className={`
                           w-full px-3 py-2 rounded-lg text-sm
-                          ${theme === 'dark' 
-                            ? 'bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500' 
-                            : 'bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400'}
+                          ${
+                            theme === "dark"
+                              ? "bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500"
+                              : "bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400"
+                          }
                           border focus:border-cyber-cyan
                         `}
                         onBlur={() => {
-                          if (!newCollectionName.trim()) setIsCreatingCollection(false);
+                          if (!newCollectionName.trim())
+                            setIsCreatingCollection(false);
                         }}
                       />
                     </form>
@@ -585,26 +855,42 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                         onClick={() => handleCollectionSelect(collection.id)}
                         className={`
                           group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
-                          ${activeCollection === collection.id && !activeTag
-                            ? 'bg-cyber-cyan/20 text-cyber-cyan'
-                            : theme === 'dark'
-                              ? 'hover:bg-charcoal-700 text-gray-300'
-                              : 'hover:bg-gray-100 text-gray-700'
+                          ${
+                            activeCollection === collection.id && !activeTag
+                              ? "bg-cyber-cyan/20 text-cyber-cyan"
+                              : theme === "dark"
+                              ? "hover:bg-charcoal-700 text-gray-300"
+                              : "hover:bg-gray-100 text-gray-700"
                           }
                         `}
                       >
                         {getCollectionIcon(collection.icon)}
-                        <span className="flex-1 text-sm truncate">{collection.name}</span>
-                        {collection.id === 'all' && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${theme === 'dark' ? 'bg-charcoal-600 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+                        <span className="flex-1 text-sm truncate">
+                          {collection.name}
+                        </span>
+                        {collection.id === "all" && (
+                          <span
+                            className={`text-xs px-1.5 py-0.5 rounded-full ${
+                              theme === "dark"
+                                ? "bg-charcoal-600 text-gray-400"
+                                : "bg-gray-200 text-gray-500"
+                            }`}
+                          >
                             {stats.total}
                           </span>
                         )}
-                        {collection.id === 'favorites' && stats.favorites > 0 && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${theme === 'dark' ? 'bg-charcoal-600 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
-                            {stats.favorites}
-                          </span>
-                        )}
+                        {collection.id === "favorites" &&
+                          stats.favorites > 0 && (
+                            <span
+                              className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                theme === "dark"
+                                  ? "bg-charcoal-600 text-gray-400"
+                                  : "bg-gray-200 text-gray-500"
+                              }`}
+                            >
+                              {stats.favorites}
+                            </span>
+                          )}
                         {collection.isCustom && (
                           <button
                             onClick={(e) => {
@@ -613,8 +899,18 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                             }}
                             className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-red-400 transition-opacity"
                           >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         )}
@@ -627,7 +923,11 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                 {allTags.length > 0 && (
                   <div>
                     <div className="px-2 py-2 mb-2">
-                      <span className={`text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      <span
+                        className={`text-xs font-medium uppercase tracking-wider ${
+                          theme === "dark" ? "text-gray-500" : "text-gray-400"
+                        }`}
+                      >
                         Tags
                       </span>
                     </div>
@@ -640,18 +940,23 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                           <div
                             key={tagKey}
                             onClick={() => handleTagSelect(tagKey)}
-                            onContextMenu={(e) => handleTagContextMenu(e, tagKey)}
+                            onContextMenu={(e) =>
+                              handleTagContextMenu(e, tagKey)
+                            }
                             className={`
                               group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all
-                              ${activeTag === tagKey
-                                ? 'bg-cyber-cyan/20 text-cyber-cyan'
-                                : theme === 'dark'
-                                  ? 'hover:bg-charcoal-700 text-gray-300'
-                                  : 'hover:bg-gray-100 text-gray-700'
+                              ${
+                                activeTag === tagKey
+                                  ? "bg-cyber-cyan/20 text-cyber-cyan"
+                                  : theme === "dark"
+                                  ? "hover:bg-charcoal-700 text-gray-300"
+                                  : "hover:bg-gray-100 text-gray-700"
                               }
                             `}
                           >
-                            <span className={`w-3 h-3 rounded-full ${tag.color}`} />
+                            <span
+                              className={`w-3 h-3 rounded-full ${tag.color}`}
+                            />
                             <span className="flex-1 text-sm">{tag.name}</span>
                             {/* Context menu indicator for custom tags */}
                             {isCustomTag && (
@@ -659,12 +964,26 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
                                 onClick={(e) => handleTagContextMenu(e, tagKey)}
                                 className={`
                                   p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity
-                                  ${theme === 'dark' ? 'hover:bg-charcoal-600' : 'hover:bg-gray-200'}
+                                  ${
+                                    theme === "dark"
+                                      ? "hover:bg-charcoal-600"
+                                      : "hover:bg-gray-200"
+                                  }
                                 `}
                                 title="Tag options"
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                                  />
                                 </svg>
                               </button>
                             )}
@@ -681,42 +1000,90 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
           /* Collapsed state icons */
           <div className="p-2 space-y-2">
             <button
-              onClick={() => setActiveView('boards')}
+              onClick={() => setActiveView("boards")}
               className={`
                 w-full p-2 rounded-lg transition-colors
-                ${activeView === 'boards' ? 'bg-cyber-cyan/20 text-cyber-cyan' : theme === 'dark' ? 'text-gray-400 hover:bg-charcoal-700' : 'text-gray-500 hover:bg-gray-100'}
+                ${
+                  activeView === "boards"
+                    ? "bg-cyber-cyan/20 text-cyber-cyan"
+                    : theme === "dark"
+                    ? "text-gray-400 hover:bg-charcoal-700"
+                    : "text-gray-500 hover:bg-gray-100"
+                }
               `}
               title="Boards"
             >
-              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              <svg
+                className="w-5 h-5 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                />
               </svg>
             </button>
             <button
               onClick={() => {
-                setActiveView('bookmarks');
-                setActiveCollection('all');
+                setActiveView("bookmarks");
+                setActiveCollection("all");
               }}
               className={`
                 w-full p-2 rounded-lg transition-colors
-                ${activeView === 'bookmarks' ? 'bg-cyber-cyan/20 text-cyber-cyan' : theme === 'dark' ? 'text-gray-400 hover:bg-charcoal-700' : 'text-gray-500 hover:bg-gray-100'}
+                ${
+                  activeView === "bookmarks"
+                    ? "bg-cyber-cyan/20 text-cyber-cyan"
+                    : theme === "dark"
+                    ? "text-gray-400 hover:bg-charcoal-700"
+                    : "text-gray-500 hover:bg-gray-100"
+                }
               `}
               title="Bookmarks"
             >
-              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              <svg
+                className="w-5 h-5 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                />
               </svg>
             </button>
             <button
-              onClick={() => setActiveView('notes')}
+              onClick={() => setActiveView("notes")}
               className={`
                 w-full p-2 rounded-lg transition-colors
-                ${activeView === 'notes' ? 'bg-cyber-cyan/20 text-cyber-cyan' : theme === 'dark' ? 'text-gray-400 hover:bg-charcoal-700' : 'text-gray-500 hover:bg-gray-100'}
+                ${
+                  activeView === "notes"
+                    ? "bg-cyber-cyan/20 text-cyber-cyan"
+                    : theme === "dark"
+                    ? "text-gray-400 hover:bg-charcoal-700"
+                    : "text-gray-500 hover:bg-gray-100"
+                }
               `}
               title="Notes"
             >
-              <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <svg
+                className="w-5 h-5 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
               </svg>
             </button>
           </div>
@@ -724,170 +1091,246 @@ function Sidebar({ isOpen, onClose, onCollapsedChange }) {
       </div>
 
       {/* Footer - Theme Toggle & Version */}
-      <div className={`p-4 border-t flex items-center justify-between ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
+      <div
+        className={`p-4 border-t flex items-center justify-between ${
+          theme === "dark" ? "border-charcoal-700" : "border-gray-200"
+        }`}
+      >
         {/* Theme Toggle */}
         <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
             className={`
               relative w-14 h-7 rounded-full transition-colors duration-300 ease-in-out
-              ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-200'}
+              ${theme === "dark" ? "bg-charcoal-700" : "bg-gray-200"}
             `}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode (T)`}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode (T)`}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
-          {/* Toggle track icons */}
-          <div className="absolute inset-0 flex items-center justify-between px-1.5">
-            {/* Sun icon (left side) */}
-            <svg 
-              className={`w-4 h-4 transition-opacity duration-300 ${theme === 'dark' ? 'opacity-30 text-gray-500' : 'opacity-0'}`}
-              fill="currentColor" 
-              viewBox="0 0 20 20"
-            >
-              <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-            </svg>
-            {/* Moon icon (right side) */}
-            <svg 
-              className={`w-4 h-4 transition-opacity duration-300 ${theme === 'dark' ? 'opacity-0' : 'opacity-30 text-gray-400'}`}
-              fill="currentColor" 
-              viewBox="0 0 20 20"
-            >
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-            </svg>
-          </div>
-          {/* Toggle knob */}
-          <div 
-            className={`
-              absolute top-0.5 w-6 h-6 rounded-full shadow-md transition-all duration-300 ease-in-out
-              flex items-center justify-center
-              ${theme === 'dark' 
-                ? 'translate-x-7 bg-charcoal-500' 
-                : 'translate-x-0.5 bg-white'
-              }
-            `}
-          >
-            {theme === 'dark' ? (
-              <svg className="w-3.5 h-3.5 text-cyber-cyan" fill="currentColor" viewBox="0 0 20 20">
+            {/* Toggle track icons */}
+            <div className="absolute inset-0 flex items-center justify-between px-1.5">
+              {/* Sun icon (left side) */}
+              <svg
+                className={`w-4 h-4 transition-opacity duration-300 ${
+                  theme === "dark" ? "opacity-30 text-gray-500" : "opacity-0"
+                }`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {/* Moon icon (right side) */}
+              <svg
+                className={`w-4 h-4 transition-opacity duration-300 ${
+                  theme === "dark" ? "opacity-0" : "opacity-30 text-gray-400"
+                }`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
               </svg>
-            ) : (
-              <svg className="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-              </svg>
-            )}
-          </div>
-        </button>
+            </div>
+            {/* Toggle knob */}
+            <div
+              className={`
+              absolute top-0.5 w-6 h-6 rounded-full shadow-md transition-all duration-300 ease-in-out
+              flex items-center justify-center
+              ${
+                theme === "dark"
+                  ? "translate-x-7 bg-charcoal-500"
+                  : "translate-x-0.5 bg-white"
+              }
+            `}
+            >
+              {theme === "dark" ? (
+                <svg
+                  className="w-3.5 h-3.5 text-cyber-cyan"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
+              ) : (
+                <svg
+                  className="w-3.5 h-3.5 text-amber-500"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </div>
+          </button>
         </div>
-        
-        {/* Version & Keyboard Shortcuts Hint */}
+
+        {/* Version & iCloud Sync */}
         {(!isCollapsed || window.innerWidth < 1024) && (
           <div className="flex items-center gap-2">
             {appVersion && (
-              <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+              <span
+                className={`text-xs ${
+                  theme === "dark" ? "text-gray-500" : "text-gray-400"
+                }`}
+              >
                 v{appVersion}
               </span>
             )}
-            <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>·</span>
-            <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-              Press <kbd className={`px-1 py-0.5 rounded text-[10px] font-mono ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-100'}`}>?</kbd> for shortcuts
-            </span>
+            {appVersion && (
+              <span
+                className={`text-xs ${
+                  theme === "dark" ? "text-gray-600" : "text-gray-300"
+                }`}
+              >
+                ·
+              </span>
+            )}
+            <SyncStatus />
           </div>
         )}
       </div>
-
     </aside>
   );
 
   // Delete Board Confirmation Modal - rendered via portal to center on screen
-  const deleteModal = deletingBoard && createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div 
-        className={`
+  const deleteModal =
+    deletingBoard &&
+    createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div
+          className={`
           w-full max-w-md rounded-2xl p-6 shadow-2xl
-          ${theme === 'dark' ? 'bg-charcoal-800 border border-charcoal-700' : 'bg-white border border-gray-200'}
+          ${
+            theme === "dark"
+              ? "bg-charcoal-800 border border-charcoal-700"
+              : "bg-white border border-gray-200"
+          }
         `}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Warning Icon */}
-        <div className="flex justify-center mb-4">
-          <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
-            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Warning Icon */}
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
           </div>
-        </div>
 
-        {/* Title */}
-        <h3 className={`text-lg font-semibold text-center mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Delete Board
-        </h3>
-
-        {/* Description */}
-        <p className={`text-sm text-center mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          This action cannot be undone. All cards and columns in this board will be permanently deleted.
-        </p>
-
-        {/* Confirmation Input */}
-        <div className="mb-4">
-          <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-            Type <span className="font-semibold text-red-500">"{deletingBoard.name}"</span> to confirm:
-          </label>
-          <input
-            type="text"
-            value={deleteConfirmName}
-            onChange={(e) => setDeleteConfirmName(e.target.value)}
-            placeholder="Enter board name..."
-            autoFocus
-            className={`
-              w-full px-4 py-2.5 rounded-lg text-sm
-              ${theme === 'dark' 
-                ? 'bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500' 
-                : 'bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400'}
-              border focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-colors
-            `}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && deleteConfirmName === deletingBoard.name) {
-                confirmDeleteBoard();
-              }
-              if (e.key === 'Escape') {
-                cancelDeleteBoard();
-              }
-            }}
-          />
-        </div>
-
-        {/* Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={cancelDeleteBoard}
-            className={`
-              flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-              ${theme === 'dark' 
-                ? 'bg-charcoal-700 hover:bg-charcoal-600 text-gray-300' 
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}
-            `}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirmDeleteBoard}
-            disabled={deleteConfirmName !== deletingBoard.name}
-            className={`
-              flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-              ${deleteConfirmName === deletingBoard.name
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : theme === 'dark'
-                  ? 'bg-charcoal-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
-            `}
+          {/* Title */}
+          <h3
+            className={`text-lg font-semibold text-center mb-2 ${
+              theme === "dark" ? "text-white" : "text-gray-900"
+            }`}
           >
             Delete Board
-          </button>
+          </h3>
+
+          {/* Description */}
+          <p
+            className={`text-sm text-center mb-4 ${
+              theme === "dark" ? "text-gray-400" : "text-gray-600"
+            }`}
+          >
+            This action cannot be undone. All cards and columns in this board
+            will be permanently deleted.
+          </p>
+
+          {/* Confirmation Input */}
+          <div className="mb-4">
+            <label
+              className={`block text-sm mb-2 ${
+                theme === "dark" ? "text-gray-300" : "text-gray-700"
+              }`}
+            >
+              Type{" "}
+              <span className="font-semibold text-red-500">
+                "{deletingBoard.name}"
+              </span>{" "}
+              to confirm:
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder="Enter board name..."
+              autoFocus
+              className={`
+              w-full px-4 py-2.5 rounded-lg text-sm
+              ${
+                theme === "dark"
+                  ? "bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500"
+                  : "bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400"
+              }
+              border focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-colors
+            `}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  deleteConfirmName === deletingBoard.name
+                ) {
+                  confirmDeleteBoard();
+                }
+                if (e.key === "Escape") {
+                  cancelDeleteBoard();
+                }
+              }}
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={cancelDeleteBoard}
+              className={`
+              flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
+              ${
+                theme === "dark"
+                  ? "bg-charcoal-700 hover:bg-charcoal-600 text-gray-300"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+              }
+            `}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteBoard}
+              disabled={deleteConfirmName !== deletingBoard.name}
+              className={`
+              flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
+              ${
+                deleteConfirmName === deletingBoard.name
+                  ? "bg-red-500 hover:bg-red-600 text-white"
+                  : theme === "dark"
+                  ? "bg-charcoal-700 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }
+            `}
+            >
+              Delete Board
+            </button>
+          </div>
         </div>
-      </div>
-    </div>,
-    document.body
-  );
+      </div>,
+      document.body
+    );
 
   return (
     <>
