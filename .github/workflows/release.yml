@@ -97,6 +97,10 @@ jobs:
 
           echo "Installed provisioning profile UUID: $UUID"
 
+          # Also place a copy where tauri.conf.json expects it so it can be embedded into the .app
+          # (CloudKit needs an application identifier; embedding the profile ensures this works on end-user machines.)
+          cp "$PROFILE_PATH" "client/src-tauri/Carbon.provisionprofile"
+
       - name: Build and Release Tauri app
         uses: tauri-apps/tauri-action@v0
         env:

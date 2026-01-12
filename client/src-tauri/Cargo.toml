@@ -1,6 +1,6 @@
 [package]
 name = "canban"
-version = "1.1.5"
+version = "1.1.6"
 description = "A local organization project to keep me on track and organized"
 authors = ["you"]
 license = "MIT"
