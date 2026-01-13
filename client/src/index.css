@@ -36,20 +36,6 @@ html, body {
   background: rgba(0, 0, 0, 0.25);
 }
 
-/* Noise texture overlay */
-.noise-bg {
-  position: relative;
-}
-
-.noise-bg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  opacity: 0.03;
-  pointer-events: none;
-  z-index: 0;
-}
 
 /* Glass effect - frosted glass like Codex app */
 .glass {
@@ -125,9 +111,6 @@ html, body {
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.light .noise-bg::before {
-  opacity: 0.02;
-}
 
 /* Drag overlay styles */
 .drag-overlay {
@@ -402,10 +385,6 @@ input[type="checkbox"]:checked::after {
 
 /* Print styles */
 @media print {
-  .noise-bg::before {
-    display: none;
-  }
-
   .glass {
     background: white;
     border: 1px solid #e5e7eb;

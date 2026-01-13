@@ -77,7 +77,7 @@ function App() {
   }
 
   return (
-    <div className={`min-h-screen flex ${theme === 'dark' ? 'bg-charcoal-900 text-white' : 'bg-gray-50 text-gray-900'} noise-bg`}>
+    <div className={`min-h-screen flex ${theme === 'dark' ? 'bg-charcoal-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Titlebar drag region for Tauri */}
       <TitlebarDragRegion sidebarCollapsed={sidebarCollapsed} />
 
