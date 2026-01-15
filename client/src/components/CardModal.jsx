@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { useBoardStore, LABELS, PRIORITIES } from '../store/boardStore';
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { useBoardStore, LABELS, PRIORITIES } from "../store/boardStore";
 
 function CardModal({ card, columnId, onClose }) {
-  const { 
-    updateCard, 
-    deleteCard, 
-    toggleCardLabel, 
+  const {
+    updateCard,
+    deleteCard,
+    toggleCardLabel,
     setCardPriority,
     addChecklistItem,
     toggleChecklistItem,
@@ -14,102 +14,27 @@ function CardModal({ card, columnId, onClose }) {
     updateChecklistItem,
     archiveCard,
     theme,
-    runChecklistInCursor,
-    fetchCursorJobStatus,
-    applyCursorResults,
-    clearCursorJob
   } = useBoardStore();
-  
+
   const [title, setTitle] = useState(card.title);
-  const [description, setDescription] = useState(card.description || '');
+  const [description, setDescription] = useState(card.description || "");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
-  const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [newChecklistItem, setNewChecklistItem] = useState("");
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [copiedChecklist, setCopiedChecklist] = useState(false);
   const [editingChecklistItemId, setEditingChecklistItemId] = useState(null);
-  const [editingChecklistItemText, setEditingChecklistItemText] = useState('');
-  
-  // Cursor job state
-  const [cursorJobLoading, setCursorJobLoading] = useState(false);
-  const [cursorJobError, setCursorJobError] = useState(null);
-  const [showCursorResults, setShowCursorResults] = useState(true);
-  const pollingIntervalRef = useRef(null);
+  const [editingChecklistItemText, setEditingChecklistItemText] = useState("");
 
   // Close on escape key
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [onClose]);
-
-  // Poll for Cursor job status when a job is active
-  const pollJobStatus = useCallback(async () => {
-    if (!card.cursorJobId) return;
-    
-    const result = await fetchCursorJobStatus(card.cursorJobId);
-    if (result.error) {
-      console.error('Failed to poll job status:', result.error);
-      return;
-    }
-    
-    const job = result.job;
-    
-    // Apply results to the card
-    await applyCursorResults(columnId, card.id, job);
-    
-    // Stop polling if job is completed or failed
-    if (job.status === 'completed' || job.status === 'failed') {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    }
-  }, [card.cursorJobId, card.id, columnId, fetchCursorJobStatus, applyCursorResults]);
-
-  useEffect(() => {
-    // Start polling if there's an active job
-    if (card.cursorJobId && card.cursorJobStatus !== 'completed' && card.cursorJobStatus !== 'failed') {
-      // Poll immediately
-      pollJobStatus();
-      
-      // Then poll every 2 seconds
-      pollingIntervalRef.current = setInterval(pollJobStatus, 2000);
-    }
-    
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [card.cursorJobId, card.cursorJobStatus, pollJobStatus]);
-
-  // Handle running checklist in Cursor
-  const handleRunInCursor = async () => {
-    setCursorJobLoading(true);
-    setCursorJobError(null);
-    
-    const result = await runChecklistInCursor(columnId, card.id);
-    
-    setCursorJobLoading(false);
-    
-    if (result.error) {
-      setCursorJobError(result.error);
-      return;
-    }
-    
-    // Job created successfully, polling will start automatically
-  };
-
-  // Handle clearing cursor job data
-  const handleClearCursorJob = async () => {
-    await clearCursorJob(columnId, card.id);
-    setCursorJobError(null);
-  };
 
   const handleSaveTitle = async () => {
     if (title.trim() && title !== card.title) {
@@ -141,7 +66,7 @@ function CardModal({ card, columnId, onClose }) {
     e.preventDefault();
     if (newChecklistItem.trim()) {
       await addChecklistItem(columnId, card.id, newChecklistItem.trim());
-      setNewChecklistItem('');
+      setNewChecklistItem("");
     }
   };
 
@@ -152,50 +77,58 @@ function CardModal({ card, columnId, onClose }) {
 
   const handleSaveChecklistItem = async () => {
     if (editingChecklistItemText.trim() && editingChecklistItemId) {
-      await updateChecklistItem(columnId, card.id, editingChecklistItemId, editingChecklistItemText.trim());
+      await updateChecklistItem(
+        columnId,
+        card.id,
+        editingChecklistItemId,
+        editingChecklistItemText.trim()
+      );
     }
     setEditingChecklistItemId(null);
-    setEditingChecklistItemText('');
+    setEditingChecklistItemText("");
   };
 
   const handleCancelEditChecklistItem = () => {
     setEditingChecklistItemId(null);
-    setEditingChecklistItemText('');
+    setEditingChecklistItemText("");
   };
 
   // Copy checklist to clipboard
   const handleCopyChecklist = async () => {
     const checklistText = checklist
-      .map(item => `${item.completed ? '✓' : '○'} ${item.text}`)
-      .join('\n');
-    
-    const fullText = `${card.title}\n${'─'.repeat(card.title.length)}\n${checklistText}`;
-    
+      .map((item) => `${item.completed ? "✓" : "○"} ${item.text}`)
+      .join("\n");
+
+    const fullText = `${card.title}\n${"─".repeat(
+      card.title.length
+    )}\n${checklistText}`;
+
     try {
       await navigator.clipboard.writeText(fullText);
       setCopiedChecklist(true);
       setTimeout(() => setCopiedChecklist(false), 2000);
     } catch (err) {
-      console.error('Failed to copy checklist:', err);
+      console.error("Failed to copy checklist:", err);
     }
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const checklist = card.checklist || [];
-  const completedCount = checklist.filter(item => item.completed).length;
+  const completedCount = checklist.filter((item) => item.completed).length;
   const totalCount = checklist.length;
-  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+  const progressPercent =
+    totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   const currentLabels = card.labels || [];
   const currentPriority = card.priority ? PRIORITIES[card.priority] : null;
@@ -213,11 +146,17 @@ function CardModal({ card, columnId, onClose }) {
         onClick={(e) => e.stopPropagation()}
         className={`
           relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl animate-scale-in
-          ${theme === 'dark' ? 'glass-modal' : 'bg-white'}
+          ${theme === "dark" ? "glass-modal" : "bg-white"}
         `}
       >
         {/* Header */}
-        <div className={`px-6 py-4 border-b sticky top-0 z-10 ${theme === 'dark' ? 'border-white/10 bg-charcoal-900/80 backdrop-blur-xl' : 'border-gray-200 bg-white'}`}>
+        <div
+          className={`px-6 py-4 border-b sticky top-0 z-10 ${
+            theme === "dark"
+              ? "border-white/10 bg-charcoal-900/80 backdrop-blur-xl"
+              : "border-gray-200 bg-white"
+          }`}
+        >
           <div className="flex items-start justify-between gap-4">
             {isEditingTitle ? (
               <input
@@ -226,8 +165,8 @@ function CardModal({ card, columnId, onClose }) {
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={handleSaveTitle}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveTitle();
-                  if (e.key === 'Escape') {
+                  if (e.key === "Enter") handleSaveTitle();
+                  if (e.key === "Escape") {
                     setTitle(card.title);
                     setIsEditingTitle(false);
                   }
@@ -235,14 +174,18 @@ function CardModal({ card, columnId, onClose }) {
                 autoFocus
                 className={`
                   flex-1 px-2 py-1 rounded font-mono text-lg font-semibold border
-                  ${theme === 'dark' 
-                    ? 'bg-charcoal-700 border-charcoal-600 text-white' 
-                    : 'bg-white border-gray-300 text-gray-900'}
+                  ${
+                    theme === "dark"
+                      ? "bg-charcoal-700 border-charcoal-600 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  }
                 `}
               />
             ) : (
               <h2
-                className={`flex-1 font-mono text-lg font-semibold cursor-text hover:text-cyber-cyan transition-colors ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+                className={`flex-1 font-mono text-lg font-semibold cursor-text hover:text-cyber-cyan transition-colors ${
+                  theme === "dark" ? "text-white" : "text-gray-900"
+                }`}
                 onClick={() => setIsEditingTitle(true)}
               >
                 {card.title}
@@ -251,10 +194,24 @@ function CardModal({ card, columnId, onClose }) {
 
             <button
               onClick={onClose}
-              className={`p-1 rounded-lg transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-charcoal-700' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`p-1 rounded-lg transition-colors ${
+                theme === "dark"
+                  ? "text-gray-400 hover:text-white hover:bg-charcoal-700"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -264,11 +221,15 @@ function CardModal({ card, columnId, onClose }) {
         <div className="px-6 py-4 space-y-5">
           {/* Labels Section */}
           <div>
-            <label className={`block text-xs font-mono uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <label
+              className={`block text-xs font-mono uppercase tracking-wider mb-2 ${
+                theme === "dark" ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               Labels
             </label>
             <div className="flex flex-wrap gap-2">
-              {currentLabels.map(labelKey => {
+              {currentLabels.map((labelKey) => {
                 const label = LABELS[labelKey];
                 if (!label) return null;
                 return (
@@ -284,18 +245,24 @@ function CardModal({ card, columnId, onClose }) {
                 onClick={() => setShowLabelPicker(!showLabelPicker)}
                 className={`
                   px-3 py-1.5 rounded text-xs font-mono border-2 border-dashed
-                  ${theme === 'dark' 
-                    ? 'border-charcoal-500 text-gray-300 hover:border-cyber-cyan hover:text-cyber-cyan' 
-                    : 'border-gray-300 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan'}
+                  ${
+                    theme === "dark"
+                      ? "border-charcoal-500 text-gray-300 hover:border-cyber-cyan hover:text-cyber-cyan"
+                      : "border-gray-300 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan"
+                  }
                 `}
               >
                 + Add
               </button>
             </div>
-            
+
             {/* Label Picker */}
             {showLabelPicker && (
-              <div className={`mt-2 p-3 rounded-lg ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-100'}`}>
+              <div
+                className={`mt-2 p-3 rounded-lg ${
+                  theme === "dark" ? "bg-charcoal-700" : "bg-gray-100"
+                }`}
+              >
                 <div className="grid grid-cols-3 gap-2">
                   {Object.entries(LABELS).map(([key, label]) => {
                     const isSelected = currentLabels.includes(key);
@@ -305,10 +272,15 @@ function CardModal({ card, columnId, onClose }) {
                         onClick={() => toggleCardLabel(columnId, card.id, key)}
                         className={`
                           px-2 py-1.5 rounded text-xs font-mono font-medium uppercase tracking-wider text-white
-                          ${label.color} ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-charcoal-700' : 'opacity-60 hover:opacity-100'}
+                          ${label.color} ${
+                          isSelected
+                            ? "ring-2 ring-white ring-offset-2 ring-offset-charcoal-700"
+                            : "opacity-60 hover:opacity-100"
+                        }
                         `}
                       >
-                        {isSelected && '✓ '}{label.name}
+                        {isSelected && "✓ "}
+                        {label.name}
                       </button>
                     );
                   })}
@@ -319,13 +291,25 @@ function CardModal({ card, columnId, onClose }) {
 
           {/* Priority Section */}
           <div>
-            <label className={`block text-xs font-mono uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <label
+              className={`block text-xs font-mono uppercase tracking-wider mb-2 ${
+                theme === "dark" ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               Priority
             </label>
             <div className="flex flex-wrap gap-2">
               {currentPriority ? (
-                <span className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono font-medium ${theme === 'dark' ? 'bg-charcoal-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                  <span className={`w-2.5 h-2.5 rounded-full ${currentPriority.color}`} />
+                <span
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono font-medium ${
+                    theme === "dark"
+                      ? "bg-charcoal-600 text-white"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${currentPriority.color}`}
+                  />
                   {currentPriority.name}
                 </span>
               ) : null}
@@ -333,18 +317,24 @@ function CardModal({ card, columnId, onClose }) {
                 onClick={() => setShowPriorityPicker(!showPriorityPicker)}
                 className={`
                   px-3 py-1.5 rounded text-xs font-mono border-2 border-dashed
-                  ${theme === 'dark' 
-                    ? 'border-charcoal-500 text-gray-300 hover:border-cyber-cyan hover:text-cyber-cyan' 
-                    : 'border-gray-300 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan'}
+                  ${
+                    theme === "dark"
+                      ? "border-charcoal-500 text-gray-300 hover:border-cyber-cyan hover:text-cyber-cyan"
+                      : "border-gray-300 text-gray-500 hover:border-cyber-cyan hover:text-cyber-cyan"
+                  }
                 `}
               >
-                {currentPriority ? 'Change' : '+ Set Priority'}
+                {currentPriority ? "Change" : "+ Set Priority"}
               </button>
             </div>
 
             {/* Priority Picker */}
             {showPriorityPicker && (
-              <div className={`mt-2 p-3 rounded-lg ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-100'}`}>
+              <div
+                className={`mt-2 p-3 rounded-lg ${
+                  theme === "dark" ? "bg-charcoal-700" : "bg-gray-100"
+                }`}
+              >
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(PRIORITIES).map(([key, priority]) => {
                     const isSelected = card.priority === key;
@@ -357,11 +347,17 @@ function CardModal({ card, columnId, onClose }) {
                         }}
                         className={`
                           flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono font-medium
-                          ${theme === 'dark' ? 'bg-charcoal-600 hover:bg-charcoal-500 text-white' : 'bg-white hover:bg-gray-50 text-gray-700'}
-                          ${isSelected ? 'ring-2 ring-cyber-cyan' : ''}
+                          ${
+                            theme === "dark"
+                              ? "bg-charcoal-600 hover:bg-charcoal-500 text-white"
+                              : "bg-white hover:bg-gray-50 text-gray-700"
+                          }
+                          ${isSelected ? "ring-2 ring-cyber-cyan" : ""}
                         `}
                       >
-                        <span className={`w-2.5 h-2.5 rounded-full ${priority.color}`} />
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${priority.color}`}
+                        />
                         {priority.name}
                       </button>
                     );
@@ -374,7 +370,11 @@ function CardModal({ card, columnId, onClose }) {
                       }}
                       className={`
                         px-3 py-1.5 rounded text-xs font-mono text-red-400
-                        ${theme === 'dark' ? 'hover:bg-charcoal-600' : 'hover:bg-gray-50'}
+                        ${
+                          theme === "dark"
+                            ? "hover:bg-charcoal-600"
+                            : "hover:bg-gray-50"
+                        }
                       `}
                     >
                       Clear
@@ -387,7 +387,11 @@ function CardModal({ card, columnId, onClose }) {
 
           {/* Description */}
           <div>
-            <label className={`block text-xs font-mono uppercase tracking-wider mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <label
+              className={`block text-xs font-mono uppercase tracking-wider mb-2 ${
+                theme === "dark" ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               Description
             </label>
             {isEditingDesc ? (
@@ -400,9 +404,11 @@ function CardModal({ card, columnId, onClose }) {
                   autoFocus
                   className={`
                     w-full px-3 py-2 rounded-lg font-mono text-sm resize-none
-                    ${theme === 'dark'
-                      ? 'bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500'
-                      : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}
+                    ${
+                      theme === "dark"
+                        ? "bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500"
+                        : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400"
+                    }
                     border focus:border-cyber-cyan
                   `}
                 />
@@ -415,10 +421,14 @@ function CardModal({ card, columnId, onClose }) {
                   </button>
                   <button
                     onClick={() => {
-                      setDescription(card.description || '');
+                      setDescription(card.description || "");
                       setIsEditingDesc(false);
                     }}
-                    className={`px-3 py-1.5 rounded-lg font-mono text-sm ${theme === 'dark' ? 'hover:bg-charcoal-700' : 'hover:bg-gray-100'}`}
+                    className={`px-3 py-1.5 rounded-lg font-mono text-sm ${
+                      theme === "dark"
+                        ? "hover:bg-charcoal-700"
+                        : "hover:bg-gray-100"
+                    }`}
                   >
                     Cancel
                   </button>
@@ -429,15 +439,23 @@ function CardModal({ card, columnId, onClose }) {
                 onClick={() => setIsEditingDesc(true)}
                 className={`
                   px-3 py-2 rounded-lg font-mono text-sm cursor-text min-h-[60px]
-                  ${theme === 'dark'
-                    ? 'bg-charcoal-600/50 hover:bg-charcoal-600'
-                    : 'bg-gray-50 hover:bg-gray-100'}
-                  ${description 
-                    ? theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-                    : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}
+                  ${
+                    theme === "dark"
+                      ? "bg-charcoal-600/50 hover:bg-charcoal-600"
+                      : "bg-gray-50 hover:bg-gray-100"
+                  }
+                  ${
+                    description
+                      ? theme === "dark"
+                        ? "text-gray-200"
+                        : "text-gray-700"
+                      : theme === "dark"
+                      ? "text-gray-500"
+                      : "text-gray-400"
+                  }
                 `}
               >
-                {description || 'Click to add a description...'}
+                {description || "Click to add a description..."}
               </div>
             )}
           </div>
@@ -445,88 +463,81 @@ function CardModal({ card, columnId, onClose }) {
           {/* Checklist */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className={`text-xs font-mono uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                Checklist {totalCount > 0 && `(${completedCount}/${totalCount})`}
+              <label
+                className={`text-xs font-mono uppercase tracking-wider ${
+                  theme === "dark" ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                Checklist{" "}
+                {totalCount > 0 && `(${completedCount}/${totalCount})`}
               </label>
-              <div className="flex items-center gap-2">
-                {/* Run in Cursor Button */}
-                {totalCount > 0 && completedCount < totalCount && (
-                  <button
-                    onClick={handleRunInCursor}
-                    disabled={cursorJobLoading || (card.cursorJobStatus === 'queued' || card.cursorJobStatus === 'running')}
-                    className={`
-                      flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-colors
-                      ${cursorJobLoading || card.cursorJobStatus === 'queued' || card.cursorJobStatus === 'running'
-                        ? 'bg-violet-500/20 text-violet-400 cursor-wait'
-                        : theme === 'dark' 
-                          ? 'text-violet-400 hover:bg-violet-500/20 hover:text-violet-300' 
-                          : 'text-violet-600 hover:bg-violet-100 hover:text-violet-700'}
-                    `}
-                    title="Run incomplete items in Cursor"
-                  >
-                    {cursorJobLoading || card.cursorJobStatus === 'queued' || card.cursorJobStatus === 'running' ? (
-                      <>
-                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {card.cursorJobStatus === 'running' ? 'Running...' : 'Queued...'}
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        Run in Cursor
-                      </>
-                    )}
-                  </button>
-                )}
-                {totalCount > 0 && (
-                  <button
-                    onClick={handleCopyChecklist}
-                    className={`
-                      flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-colors
-                      ${copiedChecklist 
-                        ? 'bg-emerald-500/20 text-emerald-400' 
-                        : theme === 'dark' 
-                          ? 'text-gray-400 hover:bg-charcoal-700 hover:text-white' 
-                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}
-                    `}
-                    title="Copy checklist to clipboard"
-                  >
-                    {copiedChecklist ? (
-                      <>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        Copy
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+              {totalCount > 0 && (
+                <button
+                  onClick={handleCopyChecklist}
+                  className={`
+                    flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-colors
+                    ${
+                      copiedChecklist
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : theme === "dark"
+                        ? "text-gray-400 hover:bg-charcoal-700 hover:text-white"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                    }
+                  `}
+                  title="Copy checklist to clipboard"
+                >
+                  {copiedChecklist ? (
+                    <>
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
+              )}
             </div>
-            
-            {/* Cursor Job Error */}
-            {cursorJobError && (
-              <div className={`mb-3 px-3 py-2 rounded-lg text-xs font-mono ${theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'}`}>
-                {cursorJobError}
-              </div>
-            )}
-            
+
             {/* Progress Bar */}
             {totalCount > 0 && (
-              <div className={`h-2 rounded-full overflow-hidden mb-3 ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-200'}`}>
+              <div
+                className={`h-2 rounded-full overflow-hidden mb-3 ${
+                  theme === "dark" ? "bg-charcoal-700" : "bg-gray-200"
+                }`}
+              >
                 <div
-                  className={`h-full transition-all duration-300 ${completedCount === totalCount ? 'bg-emerald-500' : 'bg-cyber-cyan'}`}
+                  className={`h-full transition-all duration-300 ${
+                    completedCount === totalCount
+                      ? "bg-emerald-500"
+                      : "bg-cyber-cyan"
+                  }`}
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -534,23 +545,43 @@ function CardModal({ card, columnId, onClose }) {
 
             {/* Checklist Items */}
             <div className="space-y-2">
-              {checklist.map(item => (
+              {checklist.map((item) => (
                 <div
                   key={item.id}
-                  className={`flex items-center gap-3 p-2 rounded-lg group ${theme === 'dark' ? 'hover:bg-charcoal-700' : 'hover:bg-gray-50'}`}
+                  className={`flex items-center gap-3 p-2 rounded-lg group ${
+                    theme === "dark"
+                      ? "hover:bg-charcoal-700"
+                      : "hover:bg-gray-50"
+                  }`}
                 >
                   <button
-                    onClick={() => toggleChecklistItem(columnId, card.id, item.id)}
+                    onClick={() =>
+                      toggleChecklistItem(columnId, card.id, item.id)
+                    }
                     className={`
                       w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
-                      ${item.completed
-                        ? 'bg-cyber-cyan border-cyber-cyan text-charcoal-900'
-                        : theme === 'dark' ? 'border-charcoal-500 hover:border-cyber-cyan' : 'border-gray-300 hover:border-cyber-cyan'}
+                      ${
+                        item.completed
+                          ? "bg-cyber-cyan border-cyber-cyan text-charcoal-900"
+                          : theme === "dark"
+                          ? "border-charcoal-500 hover:border-cyber-cyan"
+                          : "border-gray-300 hover:border-cyber-cyan"
+                      }
                     `}
                   >
                     {item.completed && (
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                     )}
                   </button>
@@ -558,35 +589,57 @@ function CardModal({ card, columnId, onClose }) {
                     <input
                       type="text"
                       value={editingChecklistItemText}
-                      onChange={(e) => setEditingChecklistItemText(e.target.value)}
+                      onChange={(e) =>
+                        setEditingChecklistItemText(e.target.value)
+                      }
                       onBlur={handleSaveChecklistItem}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveChecklistItem();
-                        if (e.key === 'Escape') handleCancelEditChecklistItem();
+                        if (e.key === "Enter") handleSaveChecklistItem();
+                        if (e.key === "Escape") handleCancelEditChecklistItem();
                       }}
                       autoFocus
                       className={`
                         flex-1 px-2 py-1 rounded font-mono text-sm border
-                        ${theme === 'dark'
-                          ? 'bg-charcoal-600 border-charcoal-500 text-white'
-                          : 'bg-white border-gray-300 text-gray-900'}
+                        ${
+                          theme === "dark"
+                            ? "bg-charcoal-600 border-charcoal-500 text-white"
+                            : "bg-white border-gray-300 text-gray-900"
+                        }
                         focus:border-cyber-cyan
                       `}
                     />
                   ) : (
-                    <span 
+                    <span
                       onClick={() => handleStartEditChecklistItem(item)}
-                      className={`flex-1 font-mono text-sm cursor-text hover:text-cyber-cyan transition-colors ${item.completed ? 'line-through text-gray-500' : theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}
+                      className={`flex-1 font-mono text-sm cursor-text hover:text-cyber-cyan transition-colors ${
+                        item.completed
+                          ? "line-through text-gray-500"
+                          : theme === "dark"
+                          ? "text-gray-200"
+                          : "text-gray-700"
+                      }`}
                     >
                       {item.text}
                     </span>
                   )}
                   <button
-                    onClick={() => deleteChecklistItem(columnId, card.id, item.id)}
+                    onClick={() =>
+                      deleteChecklistItem(columnId, card.id, item.id)
+                    }
                     className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 transition-opacity"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -602,9 +655,11 @@ function CardModal({ card, columnId, onClose }) {
                 placeholder="Add an item..."
                 className={`
                   flex-1 px-3 py-2 rounded-lg font-mono text-sm
-                  ${theme === 'dark'
-                    ? 'bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500'
-                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}
+                  ${
+                    theme === "dark"
+                      ? "bg-charcoal-700 border-charcoal-600 text-white placeholder-gray-500"
+                      : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400"
+                  }
                   border focus:border-cyber-cyan
                 `}
               />
@@ -618,146 +673,83 @@ function CardModal({ card, columnId, onClose }) {
             </form>
           </div>
 
-          {/* Cursor Results Section */}
-          {(card.cursorResults && card.cursorResults.length > 0) && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <button
-                  onClick={() => setShowCursorResults(!showCursorResults)}
-                  className={`flex items-center gap-2 text-xs font-mono uppercase tracking-wider ${theme === 'dark' ? 'text-violet-400' : 'text-violet-600'}`}
-                >
-                  <svg 
-                    className={`w-3.5 h-3.5 transition-transform ${showCursorResults ? 'rotate-90' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                  Cursor Results ({card.cursorResults.length})
-                </button>
-                <button
-                  onClick={handleClearCursorJob}
-                  className={`
-                    flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors
-                    ${theme === 'dark' 
-                      ? 'text-gray-500 hover:bg-charcoal-700 hover:text-gray-300' 
-                      : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}
-                  `}
-                  title="Clear Cursor results"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Clear
-                </button>
-              </div>
-              
-              {showCursorResults && (
-                <div className={`space-y-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-violet-500/10 border border-violet-500/20' : 'bg-violet-50 border border-violet-200'}`}>
-                  {card.cursorResults.map((result, index) => (
-                    <div key={result.itemId || index} className="space-y-1">
-                      <div className="flex items-start gap-2">
-                        <svg className={`w-4 h-4 flex-shrink-0 mt-0.5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span className={`text-sm font-mono font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {result.itemText}
-                        </span>
-                      </div>
-                      {result.notes && (
-                        <div className={`ml-6 text-xs font-mono whitespace-pre-wrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                          {result.notes}
-                        </div>
-                      )}
-                      {result.completedAt && (
-                        <div className={`ml-6 text-[10px] font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                          Completed {new Date(result.completedAt).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Cursor Job Status Indicator */}
-          {card.cursorJobId && card.cursorJobStatus && card.cursorJobStatus !== 'completed' && (
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono ${
-              card.cursorJobStatus === 'failed' 
-                ? theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'
-                : theme === 'dark' ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-100 text-violet-600'
-            }`}>
-              {card.cursorJobStatus === 'queued' && (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Job queued, waiting for Cursor runner...
-                </>
-              )}
-              {card.cursorJobStatus === 'running' && (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Cursor is processing checklist items...
-                </>
-              )}
-              {card.cursorJobStatus === 'failed' && (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Cursor job failed
-                  <button
-                    onClick={handleClearCursorJob}
-                    className="ml-auto underline hover:no-underline"
-                  >
-                    Dismiss
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
           {/* Created Date */}
-          <div className={`flex items-center gap-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          <div
+            className={`flex items-center gap-2 text-xs ${
+              theme === "dark" ? "text-gray-500" : "text-gray-400"
+            }`}
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
             </svg>
             Created {formatDate(card.createdAt)}
           </div>
         </div>
 
         {/* Footer */}
-        <div className={`px-6 py-4 border-t flex items-center justify-between ${theme === 'dark' ? 'border-charcoal-700' : 'border-gray-200'}`}>
+        <div
+          className={`px-6 py-4 border-t flex items-center justify-between ${
+            theme === "dark" ? "border-charcoal-700" : "border-gray-200"
+          }`}
+        >
           <button
             onClick={handleArchive}
             className={`
               flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-sm
               transition-colors
-              ${theme === 'dark' ? 'text-gray-400 hover:bg-charcoal-700 hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}
+              ${
+                theme === "dark"
+                  ? "text-gray-400 hover:bg-charcoal-700 hover:text-white"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              }
             `}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+              />
             </svg>
             Archive
           </button>
-          
+
           <button
             onClick={handleDelete}
             className={`
               flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-sm
               text-red-400 transition-colors
-              ${theme === 'dark' ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}
+              ${theme === "dark" ? "hover:bg-red-500/10" : "hover:bg-red-50"}
             `}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
             Delete
           </button>

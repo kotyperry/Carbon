@@ -12,7 +12,10 @@
               "id": "1120789a-305e-41e7-a91e-c7a33beefa69",
               "title": "Dan Rooney",
               "description": "",
-              "labels": ["bug", "idea"],
+              "labels": [
+                "bug",
+                "idea"
+              ],
               "priority": "medium",
               "checklist": [],
               "createdAt": "2026-01-08T18:33:52.779Z"
@@ -44,21 +47,31 @@
               "id": "d8953102-3c31-4551-a763-4cd37a657359",
               "title": "DAM Software",
               "description": "Dam software buildout",
-              "labels": ["feature", "idea"],
+              "labels": [
+                "feature",
+                "idea"
+              ],
               "priority": null,
               "checklist": [
                 {
                   "id": "625e8948-5e44-47bd-8fa4-839d2e8cbd50",
                   "text": "Fix downloads",
-                  "completed": false
+                  "completed": false,
+                  "cursorStatus": "pending",
+                  "cursorNotes": null
                 },
                 {
                   "id": "0732a4ef-2785-4811-8706-f59630092c58",
                   "text": "Adjust download links to a single type and allow full customization",
-                  "completed": false
+                  "completed": false,
+                  "cursorStatus": "pending",
+                  "cursorNotes": null
                 }
               ],
-              "createdAt": "2026-01-08T18:36:43.950Z"
+              "createdAt": "2026-01-08T18:36:43.950Z",
+              "cursorJobId": "job-1768501042617-jwt244o3w",
+              "cursorJobStatus": "queued",
+              "cursorResults": []
             }
           ]
         },
@@ -86,7 +99,9 @@
       "description": "",
       "favicon": null,
       "image": null,
-      "tags": ["design-inspiration"],
+      "tags": [
+        "design-inspiration"
+      ],
       "collectionId": null,
       "isFavorite": false,
       "isArchived": false,
@@ -116,5 +131,8 @@
       "color": "bg-pink-500"
     }
   },
-  "activeView": "bookmarks"
+  "notes": [],
+  "activeView": "boards",
+  "lastModified": "2026-01-15T18:19:37.443Z",
+  "syncEnabled": false
 }
