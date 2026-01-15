@@ -14,6 +14,7 @@ const PORT = 3001;
 // Data file path
 const DATA_DIR = join(__dirname, '..', 'data');
 const DATA_FILE = join(DATA_DIR, 'boards.json');
+const CURSOR_JOBS_FILE = join(DATA_DIR, 'cursor-jobs.json');
 
 // Default data structure
 const DEFAULT_DATA = {
@@ -65,8 +66,33 @@ async function ensureDataFile() {
     if (!existsSync(DATA_FILE)) {
       await writeFile(DATA_FILE, JSON.stringify(DEFAULT_DATA, null, 2));
     }
+    if (!existsSync(CURSOR_JOBS_FILE)) {
+      await writeFile(CURSOR_JOBS_FILE, JSON.stringify({ jobs: {} }, null, 2));
+    }
   } catch (error) {
     console.error('Error ensuring data file:', error);
+  }
+}
+
+// Read cursor jobs from file
+async function readCursorJobs() {
+  try {
+    const content = await readFile(CURSOR_JOBS_FILE, 'utf-8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error reading cursor jobs:', error);
+    return { jobs: {} };
+  }
+}
+
+// Write cursor jobs to file
+async function writeCursorJobs(data) {
+  try {
+    await writeFile(CURSOR_JOBS_FILE, JSON.stringify(data, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error writing cursor jobs:', error);
+    return false;
   }
 }
 
@@ -188,6 +214,140 @@ app.put('/api/theme', async (req, res) => {
   data.theme = req.body.theme;
   await writeData(data);
   res.json({ theme: data.theme });
+});
+
+// ============================================
+// CURSOR JOB ENDPOINTS
+// ============================================
+
+// Create a new Cursor job from a card's checklist
+app.post('/api/cursor/jobs', async (req, res) => {
+  const { cardId, columnId, boardId, cardTitle, checklistItems } = req.body;
+
+  if (!cardId || !columnId || !boardId || !checklistItems || !Array.isArray(checklistItems)) {
+    return res.status(400).json({ error: 'Missing required fields: cardId, columnId, boardId, checklistItems' });
+  }
+
+  const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const now = new Date().toISOString();
+
+  const job = {
+    id: jobId,
+    cardId,
+    columnId,
+    boardId,
+    cardTitle: cardTitle || 'Untitled Card',
+    status: 'queued', // queued | running | completed | failed
+    createdAt: now,
+    updatedAt: now,
+    items: checklistItems.map(item => ({
+      id: item.id,
+      text: item.text,
+      status: 'pending', // pending | running | completed | failed
+      notes: null,
+      completedAt: null
+    }))
+  };
+
+  const jobsData = await readCursorJobs();
+  jobsData.jobs[jobId] = job;
+  await writeCursorJobs(jobsData);
+
+  res.json(job);
+});
+
+// Get a Cursor job by ID
+app.get('/api/cursor/jobs/:id', async (req, res) => {
+  const jobsData = await readCursorJobs();
+  const job = jobsData.jobs[req.params.id];
+
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  res.json(job);
+});
+
+// List all Cursor jobs (optionally filter by cardId)
+app.get('/api/cursor/jobs', async (req, res) => {
+  const jobsData = await readCursorJobs();
+  let jobs = Object.values(jobsData.jobs);
+
+  // Filter by cardId if provided
+  if (req.query.cardId) {
+    jobs = jobs.filter(j => j.cardId === req.query.cardId);
+  }
+
+  // Sort by createdAt descending (newest first)
+  jobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  res.json(jobs);
+});
+
+// Update a Cursor job (used by external runner to report progress/results)
+app.patch('/api/cursor/jobs/:id', async (req, res) => {
+  const jobsData = await readCursorJobs();
+  const job = jobsData.jobs[req.params.id];
+
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  const { status, itemUpdates } = req.body;
+  const now = new Date().toISOString();
+
+  // Update overall job status if provided
+  if (status && ['queued', 'running', 'completed', 'failed'].includes(status)) {
+    job.status = status;
+  }
+
+  // Update individual items if provided
+  // itemUpdates: [{ id: string, status?: string, notes?: string }]
+  if (itemUpdates && Array.isArray(itemUpdates)) {
+    for (const update of itemUpdates) {
+      const item = job.items.find(i => i.id === update.id);
+      if (item) {
+        if (update.status && ['pending', 'running', 'completed', 'failed'].includes(update.status)) {
+          item.status = update.status;
+          if (update.status === 'completed') {
+            item.completedAt = now;
+          }
+        }
+        if (update.notes !== undefined) {
+          item.notes = update.notes;
+        }
+      }
+    }
+  }
+
+  // Auto-complete job if all items are completed
+  const allCompleted = job.items.every(i => i.status === 'completed');
+  const anyFailed = job.items.some(i => i.status === 'failed');
+  if (allCompleted && job.status !== 'completed') {
+    job.status = 'completed';
+  } else if (anyFailed && job.status !== 'failed') {
+    job.status = 'failed';
+  }
+
+  job.updatedAt = now;
+  jobsData.jobs[req.params.id] = job;
+  await writeCursorJobs(jobsData);
+
+  res.json(job);
+});
+
+// Delete a Cursor job
+app.delete('/api/cursor/jobs/:id', async (req, res) => {
+  const jobsData = await readCursorJobs();
+
+  if (!jobsData.jobs[req.params.id]) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  delete jobsData.jobs[req.params.id];
+  await writeCursorJobs(jobsData);
+
+  res.json({ success: true });
 });
 
 // Start server

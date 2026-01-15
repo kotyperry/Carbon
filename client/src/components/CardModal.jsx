@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useBoardStore, LABELS, PRIORITIES } from '../store/boardStore';
 
@@ -13,7 +13,11 @@ function CardModal({ card, columnId, onClose }) {
     deleteChecklistItem,
     updateChecklistItem,
     archiveCard,
-    theme 
+    theme,
+    runChecklistInCursor,
+    fetchCursorJobStatus,
+    applyCursorResults,
+    clearCursorJob
   } = useBoardStore();
   
   const [title, setTitle] = useState(card.title);
@@ -26,6 +30,12 @@ function CardModal({ card, columnId, onClose }) {
   const [copiedChecklist, setCopiedChecklist] = useState(false);
   const [editingChecklistItemId, setEditingChecklistItemId] = useState(null);
   const [editingChecklistItemText, setEditingChecklistItemText] = useState('');
+  
+  // Cursor job state
+  const [cursorJobLoading, setCursorJobLoading] = useState(false);
+  const [cursorJobError, setCursorJobError] = useState(null);
+  const [showCursorResults, setShowCursorResults] = useState(true);
+  const pollingIntervalRef = useRef(null);
 
   // Close on escape key
   useEffect(() => {
@@ -35,6 +45,71 @@ function CardModal({ card, columnId, onClose }) {
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
+
+  // Poll for Cursor job status when a job is active
+  const pollJobStatus = useCallback(async () => {
+    if (!card.cursorJobId) return;
+    
+    const result = await fetchCursorJobStatus(card.cursorJobId);
+    if (result.error) {
+      console.error('Failed to poll job status:', result.error);
+      return;
+    }
+    
+    const job = result.job;
+    
+    // Apply results to the card
+    await applyCursorResults(columnId, card.id, job);
+    
+    // Stop polling if job is completed or failed
+    if (job.status === 'completed' || job.status === 'failed') {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    }
+  }, [card.cursorJobId, card.id, columnId, fetchCursorJobStatus, applyCursorResults]);
+
+  useEffect(() => {
+    // Start polling if there's an active job
+    if (card.cursorJobId && card.cursorJobStatus !== 'completed' && card.cursorJobStatus !== 'failed') {
+      // Poll immediately
+      pollJobStatus();
+      
+      // Then poll every 2 seconds
+      pollingIntervalRef.current = setInterval(pollJobStatus, 2000);
+    }
+    
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [card.cursorJobId, card.cursorJobStatus, pollJobStatus]);
+
+  // Handle running checklist in Cursor
+  const handleRunInCursor = async () => {
+    setCursorJobLoading(true);
+    setCursorJobError(null);
+    
+    const result = await runChecklistInCursor(columnId, card.id);
+    
+    setCursorJobLoading(false);
+    
+    if (result.error) {
+      setCursorJobError(result.error);
+      return;
+    }
+    
+    // Job created successfully, polling will start automatically
+  };
+
+  // Handle clearing cursor job data
+  const handleClearCursorJob = async () => {
+    await clearCursorJob(columnId, card.id);
+    setCursorJobError(null);
+  };
 
   const handleSaveTitle = async () => {
     if (title.trim() && title !== card.title) {
@@ -373,37 +448,79 @@ function CardModal({ card, columnId, onClose }) {
               <label className={`text-xs font-mono uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 Checklist {totalCount > 0 && `(${completedCount}/${totalCount})`}
               </label>
-              {totalCount > 0 && (
-                <button
-                  onClick={handleCopyChecklist}
-                  className={`
-                    flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-colors
-                    ${copiedChecklist 
-                      ? 'bg-emerald-500/20 text-emerald-400' 
-                      : theme === 'dark' 
-                        ? 'text-gray-400 hover:bg-charcoal-700 hover:text-white' 
-                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}
-                  `}
-                  title="Copy checklist to clipboard"
-                >
-                  {copiedChecklist ? (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Copy
-                    </>
-                  )}
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Run in Cursor Button */}
+                {totalCount > 0 && completedCount < totalCount && (
+                  <button
+                    onClick={handleRunInCursor}
+                    disabled={cursorJobLoading || (card.cursorJobStatus === 'queued' || card.cursorJobStatus === 'running')}
+                    className={`
+                      flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-colors
+                      ${cursorJobLoading || card.cursorJobStatus === 'queued' || card.cursorJobStatus === 'running'
+                        ? 'bg-violet-500/20 text-violet-400 cursor-wait'
+                        : theme === 'dark' 
+                          ? 'text-violet-400 hover:bg-violet-500/20 hover:text-violet-300' 
+                          : 'text-violet-600 hover:bg-violet-100 hover:text-violet-700'}
+                    `}
+                    title="Run incomplete items in Cursor"
+                  >
+                    {cursorJobLoading || card.cursorJobStatus === 'queued' || card.cursorJobStatus === 'running' ? (
+                      <>
+                        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {card.cursorJobStatus === 'running' ? 'Running...' : 'Queued...'}
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Run in Cursor
+                      </>
+                    )}
+                  </button>
+                )}
+                {totalCount > 0 && (
+                  <button
+                    onClick={handleCopyChecklist}
+                    className={`
+                      flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono transition-colors
+                      ${copiedChecklist 
+                        ? 'bg-emerald-500/20 text-emerald-400' 
+                        : theme === 'dark' 
+                          ? 'text-gray-400 hover:bg-charcoal-700 hover:text-white' 
+                          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}
+                    `}
+                    title="Copy checklist to clipboard"
+                  >
+                    {copiedChecklist ? (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
+            
+            {/* Cursor Job Error */}
+            {cursorJobError && (
+              <div className={`mb-3 px-3 py-2 rounded-lg text-xs font-mono ${theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'}`}>
+                {cursorJobError}
+              </div>
+            )}
             
             {/* Progress Bar */}
             {totalCount > 0 && (
@@ -500,6 +617,111 @@ function CardModal({ card, columnId, onClose }) {
               </button>
             </form>
           </div>
+
+          {/* Cursor Results Section */}
+          {(card.cursorResults && card.cursorResults.length > 0) && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setShowCursorResults(!showCursorResults)}
+                  className={`flex items-center gap-2 text-xs font-mono uppercase tracking-wider ${theme === 'dark' ? 'text-violet-400' : 'text-violet-600'}`}
+                >
+                  <svg 
+                    className={`w-3.5 h-3.5 transition-transform ${showCursorResults ? 'rotate-90' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Cursor Results ({card.cursorResults.length})
+                </button>
+                <button
+                  onClick={handleClearCursorJob}
+                  className={`
+                    flex items-center gap-1 px-2 py-1 rounded text-xs font-mono transition-colors
+                    ${theme === 'dark' 
+                      ? 'text-gray-500 hover:bg-charcoal-700 hover:text-gray-300' 
+                      : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}
+                  `}
+                  title="Clear Cursor results"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear
+                </button>
+              </div>
+              
+              {showCursorResults && (
+                <div className={`space-y-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-violet-500/10 border border-violet-500/20' : 'bg-violet-50 border border-violet-200'}`}>
+                  {card.cursorResults.map((result, index) => (
+                    <div key={result.itemId || index} className="space-y-1">
+                      <div className="flex items-start gap-2">
+                        <svg className={`w-4 h-4 flex-shrink-0 mt-0.5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className={`text-sm font-mono font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {result.itemText}
+                        </span>
+                      </div>
+                      {result.notes && (
+                        <div className={`ml-6 text-xs font-mono whitespace-pre-wrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {result.notes}
+                        </div>
+                      )}
+                      {result.completedAt && (
+                        <div className={`ml-6 text-[10px] font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                          Completed {new Date(result.completedAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cursor Job Status Indicator */}
+          {card.cursorJobId && card.cursorJobStatus && card.cursorJobStatus !== 'completed' && (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono ${
+              card.cursorJobStatus === 'failed' 
+                ? theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'
+                : theme === 'dark' ? 'bg-violet-500/20 text-violet-400' : 'bg-violet-100 text-violet-600'
+            }`}>
+              {card.cursorJobStatus === 'queued' && (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Job queued, waiting for Cursor runner...
+                </>
+              )}
+              {card.cursorJobStatus === 'running' && (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Cursor is processing checklist items...
+                </>
+              )}
+              {card.cursorJobStatus === 'failed' && (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Cursor job failed
+                  <button
+                    onClick={handleClearCursorJob}
+                    className="ml-auto underline hover:no-underline"
+                  >
+                    Dismiss
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Created Date */}
           <div className={`flex items-center gap-2 text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>

@@ -1703,4 +1703,260 @@ export const useBoardStore = create((set, get) => ({
     });
     return false;
   },
+
+  // ============================================
+  // CURSOR JOB OPERATIONS
+  // ============================================
+
+  // Run checklist items in Cursor (creates a job)
+  runChecklistInCursor: async (columnId, cardId) => {
+    const board = get().getCurrentBoard();
+    if (!board) return { error: "No active board" };
+
+    // Find the card
+    let card = null;
+    let sourceColumnId = columnId;
+    for (const col of board.columns) {
+      const found = col.cards.find((c) => c.id === cardId);
+      if (found) {
+        card = found;
+        sourceColumnId = col.id;
+        break;
+      }
+    }
+
+    if (!card) return { error: "Card not found" };
+
+    const checklist = card.checklist || [];
+    // Only include incomplete items
+    const incompleteItems = checklist.filter((item) => !item.completed);
+
+    if (incompleteItems.length === 0) {
+      return { error: "No incomplete checklist items to run" };
+    }
+
+    try {
+      const response = await fetch("/api/cursor/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cardId: card.id,
+          columnId: sourceColumnId,
+          boardId: board.id,
+          cardTitle: card.title,
+          checklistItems: incompleteItems.map((item) => ({
+            id: item.id,
+            text: item.text,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        return { error: err.error || "Failed to create job" };
+      }
+
+      const job = await response.json();
+
+      // Update card with cursorJobId
+      await get().updateCard(sourceColumnId, cardId, {
+        cursorJobId: job.id,
+        cursorJobStatus: job.status,
+      });
+
+      return { job };
+    } catch (error) {
+      console.error("Failed to run checklist in Cursor:", error);
+      return { error: error.message || "Failed to create job" };
+    }
+  },
+
+  // Fetch the latest job status for a card
+  fetchCursorJobStatus: async (jobId) => {
+    try {
+      const response = await fetch(`/api/cursor/jobs/${jobId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { error: "Job not found" };
+        }
+        const err = await response.json();
+        return { error: err.error || "Failed to fetch job" };
+      }
+      const job = await response.json();
+      return { job };
+    } catch (error) {
+      console.error("Failed to fetch cursor job status:", error);
+      return { error: error.message || "Failed to fetch job" };
+    }
+  },
+
+  // Apply Cursor results to a card (marks items complete, adds notes, moves to Done if all done)
+  applyCursorResults: async (columnId, cardId, job) => {
+    const board = get().getCurrentBoard();
+    if (!board) return;
+
+    // Find the card
+    let card = null;
+    let sourceColumnId = columnId;
+    for (const col of board.columns) {
+      const found = col.cards.find((c) => c.id === cardId);
+      if (found) {
+        card = found;
+        sourceColumnId = col.id;
+        break;
+      }
+    }
+
+    if (!card) return;
+
+    const checklist = card.checklist || [];
+    const cursorResults = card.cursorResults || [];
+
+    // Update checklist items based on job results
+    const updatedChecklist = checklist.map((item) => {
+      const jobItem = job.items.find((ji) => ji.id === item.id);
+      if (jobItem && jobItem.status === "completed") {
+        return {
+          ...item,
+          completed: true,
+          cursorStatus: jobItem.status,
+          cursorNotes: jobItem.notes,
+          cursorUpdatedAt: jobItem.completedAt,
+        };
+      } else if (jobItem) {
+        return {
+          ...item,
+          cursorStatus: jobItem.status,
+          cursorNotes: jobItem.notes,
+        };
+      }
+      return item;
+    });
+
+    // Build updated cursor results array (append new completed items)
+    const newResults = job.items
+      .filter((ji) => ji.status === "completed" && ji.notes)
+      .map((ji) => ({
+        itemId: ji.id,
+        itemText: checklist.find((c) => c.id === ji.id)?.text || ji.text || "",
+        notes: ji.notes,
+        completedAt: ji.completedAt,
+      }));
+
+    // Merge with existing results (avoid duplicates by itemId)
+    const existingIds = new Set(cursorResults.map((r) => r.itemId));
+    const mergedResults = [
+      ...cursorResults,
+      ...newResults.filter((r) => !existingIds.has(r.itemId)),
+    ];
+
+    // Update the card
+    set((state) => ({
+      boards: state.boards.map((b) =>
+        b.id === board.id
+          ? {
+              ...b,
+              columns: b.columns.map((c) =>
+                c.id === sourceColumnId
+                  ? {
+                      ...c,
+                      cards: c.cards.map((cd) =>
+                        cd.id === cardId
+                          ? {
+                              ...cd,
+                              checklist: updatedChecklist,
+                              cursorJobStatus: job.status,
+                              cursorResults: mergedResults,
+                            }
+                          : cd
+                      ),
+                    }
+                  : c
+              ),
+            }
+          : b
+      ),
+    }));
+
+    // Check if all checklist items are now completed
+    const allCompleted = updatedChecklist.every((item) => item.completed);
+
+    if (allCompleted && updatedChecklist.length > 0) {
+      // Move card to Done column
+      await get().moveCardToDoneColumn(sourceColumnId, cardId);
+    } else {
+      await get().saveData();
+    }
+  },
+
+  // Move a card to the Done column (by name)
+  moveCardToDoneColumn: async (sourceColumnId, cardId) => {
+    const board = get().getCurrentBoard();
+    if (!board) return;
+
+    // Find the Done column (case-insensitive match)
+    const doneColumn = board.columns.find(
+      (c) => c.title.toLowerCase() === "done"
+    );
+
+    if (!doneColumn) {
+      // No Done column found, just save
+      await get().saveData();
+      return;
+    }
+
+    if (doneColumn.id === sourceColumnId) {
+      // Already in Done column
+      await get().saveData();
+      return;
+    }
+
+    // Move the card to the end of the Done column
+    await get().moveCard(
+      cardId,
+      sourceColumnId,
+      doneColumn.id,
+      doneColumn.cards.length
+    );
+  },
+
+  // Clear cursor job data from a card
+  clearCursorJob: async (columnId, cardId) => {
+    const board = get().getCurrentBoard();
+    if (!board) return;
+
+    set((state) => ({
+      boards: state.boards.map((b) =>
+        b.id === board.id
+          ? {
+              ...b,
+              columns: b.columns.map((c) =>
+                c.id === columnId
+                  ? {
+                      ...c,
+                      cards: c.cards.map((card) =>
+                        card.id === cardId
+                          ? {
+                              ...card,
+                              cursorJobId: null,
+                              cursorJobStatus: null,
+                              cursorResults: [],
+                              checklist: (card.checklist || []).map((item) => ({
+                                ...item,
+                                cursorStatus: undefined,
+                                cursorNotes: undefined,
+                                cursorUpdatedAt: undefined,
+                              })),
+                            }
+                          : card
+                      ),
+                    }
+                  : c
+              ),
+            }
+          : b
+      ),
+    }));
+    await get().saveData();
+  },
 }));
