@@ -2,7 +2,7 @@ import { useState } from "react";
 import { open } from "@tauri-apps/plugin-shell";
 import { useBoardStore } from "../store/boardStore";
 
-function BookmarkCard({ bookmark, onEdit }) {
+function BookmarkCard({ bookmark, onEdit, isDropTarget }) {
   const {
     theme,
     toggleBookmarkFavorite,
@@ -93,6 +93,11 @@ function BookmarkCard({ bookmark, onEdit }) {
           theme === "dark"
             ? "glass-card shadow-lg shadow-black/30 hover:border-cyber-cyan/30"
             : "bg-white hover:bg-gray-50 border border-gray-200 shadow-sm hover:border-cyber-cyan/50 hover:shadow-lg"
+        }
+        ${
+          isDropTarget
+            ? "folder-drop-target border-cyber-cyan border-2 shadow-cyber-cyan/20 shadow-lg"
+            : ""
         }
       `}
     >

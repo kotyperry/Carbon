@@ -118,6 +118,52 @@ html, body {
   transform: rotate(3deg) scale(1.05);
 }
 
+/* Bookmark folder drop target - shows when dragging onto another bookmark */
+.folder-drop-target {
+  position: relative;
+}
+
+.folder-drop-target::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px dashed rgba(34, 197, 94, 0.5);
+  border-radius: 16px;
+  animation: folder-pulse 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.folder-drop-target::after {
+  content: '+';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  background: rgba(34, 197, 94, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  color: #0f0f0f;
+  z-index: 10;
+  pointer-events: none;
+}
+
+@keyframes folder-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
 /* Focus styles */
 input:focus,
 textarea:focus,
