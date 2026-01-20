@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useBoardStore, BOOKMARK_TAGS, TAG_COLORS } from '../store/boardStore';
 
 function AddBookmarkModal({ bookmark, onClose }) {
-  const { theme, addBookmark, updateBookmark, collections, addCustomTag, getBookmarkTags } = useBoardStore();
+  const { theme, addBookmark, updateBookmark, collections, addCustomTag, getBookmarkTags, addCollection } = useBoardStore();
   
   const [url, setUrl] = useState(bookmark?.url || 'https://');
   const [title, setTitle] = useState(bookmark?.title || '');
@@ -19,6 +19,11 @@ function AddBookmarkModal({ bookmark, onClose }) {
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
   const [tagError, setTagError] = useState('');
 
+  // New folder creation state
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [folderError, setFolderError] = useState('');
+
   const isEditing = !!bookmark;
   
   // Get current tags (this will include any newly created ones)
@@ -32,6 +37,10 @@ function AddBookmarkModal({ bookmark, onClose }) {
           setIsCreatingTag(false);
           setNewTagName('');
           setTagError('');
+        } else if (isCreatingFolder) {
+          setIsCreatingFolder(false);
+          setNewFolderName('');
+          setFolderError('');
         } else {
           onClose();
         }
@@ -39,7 +48,7 @@ function AddBookmarkModal({ bookmark, onClose }) {
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose, isCreatingTag]);
+  }, [onClose, isCreatingTag, isCreatingFolder]);
 
   // Auto-fetch metadata when URL changes (only for new bookmarks)
   useEffect(() => {
@@ -98,6 +107,35 @@ function AddBookmarkModal({ bookmark, onClose }) {
     setIsCreatingTag(false);
     setNewTagName('');
     setNewTagColor(TAG_COLORS[0]);
+  };
+
+  const handleCreateFolder = async () => {
+    setFolderError('');
+
+    if (!newFolderName.trim()) {
+      setFolderError('Folder name is required');
+      return;
+    }
+
+    // Check for duplicate folder names
+    if (customCollections.some(c => c.name.toLowerCase() === newFolderName.trim().toLowerCase())) {
+      setFolderError('A folder with this name already exists');
+      return;
+    }
+
+    try {
+      const newCollection = await addCollection(newFolderName.trim());
+
+      // Auto-select the new folder
+      setCollectionId(newCollection.id);
+
+      // Reset form
+      setIsCreatingFolder(false);
+      setNewFolderName('');
+    } catch (err) {
+      console.error('Failed to create folder:', err);
+      setFolderError('Failed to create folder');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -379,32 +417,101 @@ function AddBookmarkModal({ bookmark, onClose }) {
             </div>
           </div>
 
-          {/* Collection */}
-          {customCollections.length > 0 && (
-            <div>
-              <label className={`block text-sm font-mono font-medium mb-1.5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                Collection
+          {/* Folder */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className={`text-sm font-mono font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                Folder
               </label>
-              <select
-                value={collectionId || ''}
-                onChange={(e) => setCollectionId(e.target.value || null)}
-                className={`
-                  w-full px-3 py-2 rounded-lg font-mono text-sm cursor-pointer
-                  ${theme === 'dark'
-                    ? 'bg-charcoal-700 border-charcoal-600 text-white'
-                    : 'bg-gray-50 border-gray-200 text-gray-900'}
-                  border focus:border-cyber-cyan
-                `}
+              <button
+                type="button"
+                onClick={() => setIsCreatingFolder(true)}
+                className="flex items-center gap-1 text-xs font-mono text-cyber-cyan hover:text-cyber-cyan-dim"
               >
-                <option value="">No collection</option>
-                {customCollections.map(collection => (
-                  <option key={collection.id} value={collection.id}>
-                    {collection.name}
-                  </option>
-                ))}
-              </select>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Folder
+              </button>
             </div>
-          )}
+
+            {/* Create Folder Form */}
+            {isCreatingFolder && (
+              <div className={`mb-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-charcoal-700' : 'bg-gray-100'}`}>
+                <div className="space-y-3">
+                  {folderError && (
+                    <p className="text-xs text-red-400 font-mono">{folderError}</p>
+                  )}
+
+                  <input
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="Folder name..."
+                    autoFocus
+                    className={`
+                      w-full px-3 py-2 rounded-lg font-mono text-sm
+                      ${theme === 'dark'
+                        ? 'bg-charcoal-600 border-charcoal-500 text-white placeholder-gray-500'
+                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}
+                      border focus:border-cyber-cyan
+                    `}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCreateFolder();
+                      }
+                    }}
+                  />
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateFolder}
+                      className="flex-1 px-3 py-1.5 bg-cyber-cyan text-charcoal-900 rounded-lg font-mono text-sm font-medium hover:bg-cyber-cyan-dim"
+                    >
+                      Create Folder
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingFolder(false);
+                        setNewFolderName('');
+                        setFolderError('');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg font-mono text-sm ${theme === 'dark' ? 'hover:bg-charcoal-600' : 'hover:bg-gray-200'}`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <select
+              value={collectionId || ''}
+              onChange={(e) => setCollectionId(e.target.value || null)}
+              className={`
+                w-full px-3 py-2 rounded-lg font-mono text-sm cursor-pointer
+                ${theme === 'dark'
+                  ? 'bg-charcoal-700 border-charcoal-600 text-white'
+                  : 'bg-gray-50 border-gray-200 text-gray-900'}
+                border focus:border-cyber-cyan
+              `}
+            >
+              <option value="">No folder</option>
+              {customCollections.map(collection => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.name}
+                </option>
+              ))}
+            </select>
+            {customCollections.length === 0 && !isCreatingFolder && (
+              <p className={`mt-1.5 text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                No folders yet. Create one to organize your bookmarks!
+              </p>
+            )}
+          </div>
         </form>
 
         {/* Footer */}
