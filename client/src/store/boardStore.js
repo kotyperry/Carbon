@@ -206,6 +206,8 @@ export const useBoardStore = create((set, get) => ({
 
   // Bookmarks state
   bookmarks: [],
+  bookmarkFolders: [], // Folders for grouping bookmarks (iPhone-style)
+  activeBookmarkFolder: null, // Currently viewing folder (null = root level)
   collections: [],
   customTags: {}, // User-created tags
   activeCollection: "all",
@@ -271,6 +273,7 @@ export const useBoardStore = create((set, get) => ({
         activeBoard: data.activeBoard,
         theme: data.theme || "dark",
         bookmarks: data.bookmarks || [],
+        bookmarkFolders: data.bookmarkFolders || [],
         collections: data.collections || [
           { id: "all", name: "All Bookmarks", icon: "bookmark" },
           { id: "favorites", name: "Favorites", icon: "star" },
@@ -317,6 +320,7 @@ export const useBoardStore = create((set, get) => ({
       activeBoard,
       theme,
       bookmarks,
+      bookmarkFolders,
       collections,
       customTags,
       notes,
@@ -331,6 +335,7 @@ export const useBoardStore = create((set, get) => ({
         activeBoard,
         theme,
         bookmarks,
+        bookmarkFolders,
         collections,
         customTags,
         notes,
@@ -1056,12 +1061,21 @@ export const useBoardStore = create((set, get) => ({
     const {
       bookmarks,
       activeCollection,
+      activeBookmarkFolder,
       activeTag,
       bookmarkSearch,
       bookmarkSort,
     } = get();
 
     let filtered = [...bookmarks];
+
+    // Filter by folder if viewing a specific folder
+    if (activeBookmarkFolder) {
+      filtered = filtered.filter((b) => b.folderId === activeBookmarkFolder);
+    } else {
+      // At root level, only show bookmarks not in any folder
+      filtered = filtered.filter((b) => !b.folderId);
+    }
 
     // Filter by collection
     if (activeCollection === "favorites") {
@@ -1091,7 +1105,7 @@ export const useBoardStore = create((set, get) => ({
       );
     }
 
-    // Sort
+    // Sort - use order field first if available, then fall back to other sort methods
     switch (bookmarkSort) {
       case "title":
         filtered.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
@@ -1105,7 +1119,12 @@ export const useBoardStore = create((set, get) => ({
         break;
       case "date":
       default:
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // If bookmarks have order field, use it; otherwise sort by date
+        if (filtered.some((b) => b.order !== undefined)) {
+          filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
+        } else {
+          filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
         break;
     }
 
@@ -1259,6 +1278,175 @@ export const useBoardStore = create((set, get) => ({
         c.id === collectionId ? { ...c, ...updates } : c
       ),
     }));
+    await get().saveData();
+  },
+
+  // ============================================
+  // BOOKMARK FOLDER OPERATIONS (iPhone-style)
+  // ============================================
+
+  // Set active bookmark folder (for navigation)
+  setActiveBookmarkFolder: (folderId) => {
+    set({ activeBookmarkFolder: folderId });
+  },
+
+  // Create bookmark folder from two bookmarks (drag-drop)
+  createBookmarkFolder: async (name, bookmarkIds) => {
+    const { bookmarks, bookmarkFolders, activeCollection } = get();
+
+    const newFolder = {
+      id: uuidv4(),
+      name: name || "New Folder",
+      color: "bg-cyber-cyan", // Default folder color
+      collectionId: activeCollection === "all" ? null : activeCollection,
+      order: bookmarkFolders.length,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Update bookmarks to belong to this folder
+    set((state) => ({
+      bookmarkFolders: [...state.bookmarkFolders, newFolder],
+      bookmarks: state.bookmarks.map((b) => {
+        if (bookmarkIds.includes(b.id)) {
+          return { ...b, folderId: newFolder.id };
+        }
+        return b;
+      }),
+    }));
+    await get().saveData();
+    return newFolder;
+  },
+
+  // Delete bookmark folder (move bookmarks to root)
+  deleteBookmarkFolder: async (folderId) => {
+    set((state) => ({
+      bookmarkFolders: state.bookmarkFolders.filter((f) => f.id !== folderId),
+      bookmarks: state.bookmarks.map((b) =>
+        b.folderId === folderId ? { ...b, folderId: null } : b
+      ),
+      activeBookmarkFolder:
+        state.activeBookmarkFolder === folderId ? null : state.activeBookmarkFolder,
+    }));
+    await get().saveData();
+  },
+
+  // Update bookmark folder
+  updateBookmarkFolder: async (folderId, updates) => {
+    set((state) => ({
+      bookmarkFolders: state.bookmarkFolders.map((f) =>
+        f.id === folderId ? { ...f, ...updates } : f
+      ),
+    }));
+    await get().saveData();
+  },
+
+  // Move bookmark into a folder
+  moveBookmarkToFolder: async (bookmarkId, folderId) => {
+    set((state) => ({
+      bookmarks: state.bookmarks.map((b) =>
+        b.id === bookmarkId ? { ...b, folderId } : b
+      ),
+    }));
+    await get().saveData();
+  },
+
+  // Remove bookmark from folder (to root)
+  removeBookmarkFromFolder: async (bookmarkId) => {
+    set((state) => ({
+      bookmarks: state.bookmarks.map((b) =>
+        b.id === bookmarkId ? { ...b, folderId: null } : b
+      ),
+    }));
+    await get().saveData();
+  },
+
+  // Get bookmarks in a specific folder
+  getBookmarksInFolder: (folderId) => {
+    const { bookmarks } = get();
+    return bookmarks
+      .filter((b) => b.folderId === folderId && !b.isArchived)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+  },
+
+  // Get folders for current collection
+  getBookmarkFoldersForCollection: () => {
+    const { bookmarkFolders, activeCollection } = get();
+
+    if (activeCollection === "all") {
+      // Show all folders that don't have a specific collection
+      return bookmarkFolders
+        .filter((f) => !f.collectionId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+    } else if (activeCollection === "favorites" || activeCollection === "archive") {
+      // Don't show folders in special collections
+      return [];
+    } else {
+      return bookmarkFolders
+        .filter((f) => f.collectionId === activeCollection)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+  },
+
+  // Reorder bookmarks (for drag and drop)
+  reorderBookmarks: async (activeId, overId) => {
+    const { bookmarks, activeBookmarkFolder } = get();
+
+    // Get the active bookmark to determine context
+    const activeBookmark = bookmarks.find((b) => b.id === activeId);
+    if (!activeBookmark) return;
+
+    // Only reorder within the same folder context
+    const contextFolderId = activeBookmarkFolder || activeBookmark.folderId || null;
+    const contextBookmarks = bookmarks.filter((b) =>
+      (b.folderId || null) === contextFolderId
+    );
+
+    const activeIndex = contextBookmarks.findIndex((b) => b.id === activeId);
+    const overIndex = contextBookmarks.findIndex((b) => b.id === overId);
+
+    if (activeIndex === -1 || overIndex === -1) return;
+
+    // Reorder within context
+    const reorderedContext = [...contextBookmarks];
+    const [removed] = reorderedContext.splice(activeIndex, 1);
+    reorderedContext.splice(overIndex, 0, removed);
+
+    // Create a map of new orders for context bookmarks
+    const newOrderMap = new Map();
+    reorderedContext.forEach((b, index) => {
+      newOrderMap.set(b.id, index);
+    });
+
+    set((state) => ({
+      // Only update order for bookmarks in the same context
+      bookmarks: state.bookmarks.map((b) => {
+        if (newOrderMap.has(b.id)) {
+          return { ...b, order: newOrderMap.get(b.id) };
+        }
+        return b;
+      }),
+    }));
+    await get().saveData();
+  },
+
+  // Reorder folders (for drag and drop)
+  reorderBookmarkFolders: async (activeId, overId) => {
+    const { bookmarkFolders } = get();
+    const activeIndex = bookmarkFolders.findIndex((f) => f.id === activeId);
+    const overIndex = bookmarkFolders.findIndex((f) => f.id === overId);
+
+    if (activeIndex === -1 || overIndex === -1) return;
+
+    set((state) => {
+      const newFolders = [...state.bookmarkFolders];
+      const [removed] = newFolders.splice(activeIndex, 1);
+      newFolders.splice(overIndex, 0, removed);
+
+      // Update order field for all folders
+      return {
+        bookmarkFolders: newFolders.map((f, index) => ({ ...f, order: index })),
+      };
+    });
     await get().saveData();
   },
 
@@ -1473,6 +1661,7 @@ export const useBoardStore = create((set, get) => ({
       activeBoard,
       theme,
       bookmarks,
+      bookmarkFolders,
       collections,
       customTags,
       notes,
@@ -1500,6 +1689,7 @@ export const useBoardStore = create((set, get) => ({
         activeBoard,
         theme,
         bookmarks,
+        bookmarkFolders,
         collections,
         customTags,
         notes,
@@ -1533,6 +1723,7 @@ export const useBoardStore = create((set, get) => ({
               activeBoard: remoteData.activeBoard,
               theme: remoteData.theme || "dark",
               bookmarks: remoteData.bookmarks || [],
+              bookmarkFolders: remoteData.bookmarkFolders || [],
               collections: remoteData.collections || get().collections,
               customTags: remoteTags,
               notes: remoteData.notes || [],
@@ -1613,6 +1804,7 @@ export const useBoardStore = create((set, get) => ({
           activeBoard: remoteData.activeBoard,
           theme: remoteData.theme || "dark",
           bookmarks: remoteData.bookmarks || [],
+          bookmarkFolders: remoteData.bookmarkFolders || [],
           collections: remoteData.collections || get().collections,
           customTags: remoteTags,
           notes: remoteData.notes || [],

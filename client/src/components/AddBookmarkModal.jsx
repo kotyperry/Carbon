@@ -488,24 +488,36 @@ function AddBookmarkModal({ bookmark, onClose }) {
               </div>
             )}
 
-            <select
-              value={collectionId || ''}
-              onChange={(e) => setCollectionId(e.target.value || null)}
-              className={`
-                w-full px-3 py-2 rounded-lg font-mono text-sm cursor-pointer
-                ${theme === 'dark'
-                  ? 'bg-charcoal-700 border-charcoal-600 text-white'
-                  : 'bg-gray-50 border-gray-200 text-gray-900'}
-                border focus:border-cyber-cyan
-              `}
-            >
-              <option value="">No folder</option>
-              {customCollections.map(collection => (
-                <option key={collection.id} value={collection.id}>
-                  {collection.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={collectionId || ''}
+                onChange={(e) => setCollectionId(e.target.value || null)}
+                className={`
+                  w-full px-3 py-2 pr-10 rounded-lg font-mono text-sm cursor-pointer appearance-none
+                  ${theme === 'dark'
+                    ? 'bg-charcoal-700 border-charcoal-600 text-white'
+                    : 'bg-gray-50 border-gray-200 text-gray-900'}
+                  border focus:border-cyber-cyan focus:outline-none
+                `}
+              >
+                <option value="">No folder</option>
+                {customCollections.map(collection => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.name}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
             {customCollections.length === 0 && !isCreatingFolder && (
               <p className={`mt-1.5 text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                 No folders yet. Create one to organize your bookmarks!
