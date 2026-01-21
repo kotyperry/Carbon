@@ -78,12 +78,16 @@ pub struct Bookmark {
     pub tags: Vec<String>,
     #[serde(rename = "collectionId", default)]
     pub collection_id: Option<String>,
+    #[serde(rename = "folderId", default)]
+    pub folder_id: Option<String>,
     #[serde(rename = "isFavorite", default)]
     pub is_favorite: bool,
     #[serde(rename = "isArchived", default)]
     pub is_archived: bool,
     #[serde(rename = "createdAt")]
     pub created_at: String,
+    #[serde(default)]
+    pub order: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -107,6 +111,20 @@ pub struct Note {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BookmarkFolder {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(rename = "collectionId", default)]
+    pub collection_id: Option<String>,
+    #[serde(default)]
+    pub order: Option<i32>,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppData {
     pub boards: Vec<Board>,
     #[serde(rename = "activeBoard")]
@@ -117,6 +135,8 @@ pub struct AppData {
     pub active_view: String,
     #[serde(default)]
     pub bookmarks: Vec<Bookmark>,
+    #[serde(rename = "bookmarkFolders", default)]
+    pub bookmark_folders: Vec<BookmarkFolder>,
     #[serde(default = "default_collections")]
     pub collections: Vec<Collection>,
     #[serde(rename = "customTags", default)]
@@ -142,6 +162,8 @@ pub struct SyncData {
     pub theme: String,
     #[serde(default)]
     pub bookmarks: Vec<Bookmark>,
+    #[serde(rename = "bookmarkFolders", default)]
+    pub bookmark_folders: Vec<BookmarkFolder>,
     #[serde(default = "default_collections")]
     pub collections: Vec<Collection>,
     #[serde(rename = "customTags", default)]
@@ -251,6 +273,7 @@ fn get_default_data() -> AppData {
         theme: "dark".to_string(),
         active_view: "boards".to_string(),
         bookmarks: vec![],
+        bookmark_folders: vec![],
         collections: default_collections(),
         custom_tags: std::collections::HashMap::new(),
         notes: vec![],

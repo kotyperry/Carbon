@@ -1069,24 +1069,29 @@ export const useBoardStore = create((set, get) => ({
 
     let filtered = [...bookmarks];
 
-    // Filter by folder if viewing a specific folder
-    if (activeBookmarkFolder) {
-      filtered = filtered.filter((b) => b.folderId === activeBookmarkFolder);
-    } else {
-      // At root level, only show bookmarks not in any folder
-      filtered = filtered.filter((b) => !b.folderId);
-    }
-
-    // Filter by collection
+    // Filter by collection (Favorites/Archive show all matching bookmarks regardless of folder)
     if (activeCollection === "favorites") {
-      filtered = filtered.filter((b) => b.isFavorite);
+      // Show all favorited bookmarks regardless of folder
+      filtered = filtered.filter((b) => b.isFavorite && !b.isArchived);
     } else if (activeCollection === "archive") {
+      // Show all archived bookmarks regardless of folder
       filtered = filtered.filter((b) => b.isArchived);
-    } else if (activeCollection && activeCollection !== "all") {
-      filtered = filtered.filter((b) => b.collectionId === activeCollection);
     } else {
-      // 'all' - exclude archived
-      filtered = filtered.filter((b) => !b.isArchived);
+      // For regular collections, apply folder filtering
+      if (activeBookmarkFolder) {
+        filtered = filtered.filter((b) => b.folderId === activeBookmarkFolder);
+      } else {
+        // At root level, only show bookmarks not in any folder
+        filtered = filtered.filter((b) => !b.folderId);
+      }
+
+      // Filter by custom collection or exclude archived for "all"
+      if (activeCollection && activeCollection !== "all") {
+        filtered = filtered.filter((b) => b.collectionId === activeCollection && !b.isArchived);
+      } else {
+        // 'all' - exclude archived
+        filtered = filtered.filter((b) => !b.isArchived);
+      }
     }
 
     // Filter by tag
@@ -1291,13 +1296,13 @@ export const useBoardStore = create((set, get) => ({
   },
 
   // Create bookmark folder from two bookmarks (drag-drop)
-  createBookmarkFolder: async (name, bookmarkIds) => {
+  createBookmarkFolder: async (name, bookmarkIds, color = "bg-cyber-cyan") => {
     const { bookmarks, bookmarkFolders, activeCollection } = get();
 
     const newFolder = {
       id: uuidv4(),
       name: name || "New Folder",
-      color: "bg-cyber-cyan", // Default folder color
+      color: color,
       collectionId: activeCollection === "all" ? null : activeCollection,
       order: bookmarkFolders.length,
       createdAt: new Date().toISOString(),
