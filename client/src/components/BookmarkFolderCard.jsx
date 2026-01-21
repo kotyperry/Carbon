@@ -203,7 +203,7 @@ function FolderCardContent({
 
       {/* Stacked list of bookmarks with icons and names */}
       <div className="space-y-2 mb-2">
-        {previewBookmarks.slice(0, 5).map((bookmark, index) => {
+        {previewBookmarks.map((bookmark, index) => {
           const faviconUrl = bookmark?.favicon || getFaviconUrl(bookmark.url);
 
           const handleBookmarkClick = async (e) => {

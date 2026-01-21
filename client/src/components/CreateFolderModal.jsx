@@ -6,7 +6,7 @@ import { useBoardStore, TAG_COLORS } from "../store/boardStore";
 const FOLDER_COLORS = ["bg-cyber-cyan", ...TAG_COLORS];
 
 function CreateFolderModal({ bookmarkIds, onClose, onSuccess }) {
-  const { theme, bookmarks, createBookmarkFolder, updateBookmarkFolder } = useBoardStore();
+  const { theme, bookmarks, createBookmarkFolder } = useBoardStore();
 
   const [folderName, setFolderName] = useState("");
   const [folderColor, setFolderColor] = useState("bg-cyber-cyan");
@@ -48,9 +48,7 @@ function CreateFolderModal({ bookmarkIds, onClose, onSuccess }) {
 
     setIsLoading(true);
     try {
-      const folder = await createBookmarkFolder(folderName.trim(), bookmarkIds);
-      // Update the folder with the selected color
-      await updateBookmarkFolder(folder.id, { color: folderColor });
+      const folder = await createBookmarkFolder(folderName.trim(), bookmarkIds, folderColor);
       onSuccess?.(folder);
       onClose();
     } catch (err) {

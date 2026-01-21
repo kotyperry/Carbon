@@ -46,9 +46,11 @@ function BookmarksView({ onMenuClick }) {
   const [activeId, setActiveId] = useState(null);
   const [overId, setOverId] = useState(null);
   const [dropType, setDropType] = useState(null); // 'reorder' | 'folder'
+  const [folderProgress, setFolderProgress] = useState(0); // 0-100 progress toward folder mode
 
   // Hover timer for folder creation
   const hoverTimerRef = useRef(null);
+  const progressTimerRef = useRef(null);
   const lastOverIdRef = useRef(null);
 
   // Folder creation modal state
@@ -100,6 +102,9 @@ function BookmarksView({ onMenuClick }) {
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
       }
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+      }
     };
   }, []);
 
@@ -108,10 +113,15 @@ function BookmarksView({ onMenuClick }) {
     setActiveId(event.active.id);
     setDropType(null);
     setOverId(null);
+    setFolderProgress(0);
     lastOverIdRef.current = null;
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
+    }
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
     }
   }, []);
 
@@ -121,9 +131,14 @@ function BookmarksView({ onMenuClick }) {
     if (!over) {
       setOverId(null);
       setDropType(null);
+      setFolderProgress(0);
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = null;
+      }
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
       lastOverIdRef.current = null;
       return;
@@ -136,9 +151,14 @@ function BookmarksView({ onMenuClick }) {
     const isOverFolder = bookmarkFolders.some((f) => f.id === currentOverId);
     if (isOverFolder) {
       setDropType("folder");
+      setFolderProgress(100);
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = null;
+      }
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
       return;
     }
@@ -152,13 +172,29 @@ function BookmarksView({ onMenuClick }) {
       if (lastOverIdRef.current !== currentOverId) {
         lastOverIdRef.current = currentOverId;
         setDropType("reorder"); // Start as reorder
+        setFolderProgress(0);
 
-        // Clear any existing timer
+        // Clear any existing timers
         if (hoverTimerRef.current) {
           clearTimeout(hoverTimerRef.current);
         }
+        if (progressTimerRef.current) {
+          clearInterval(progressTimerRef.current);
+        }
 
-        // Start new timer for folder mode
+        // Start progress animation (update every 50ms for smooth animation)
+        const startTime = Date.now();
+        progressTimerRef.current = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min((elapsed / FOLDER_HOVER_DELAY) * 100, 100);
+          setFolderProgress(progress);
+          if (progress >= 100) {
+            clearInterval(progressTimerRef.current);
+            progressTimerRef.current = null;
+          }
+        }, 50);
+
+        // Start timer for folder mode
         hoverTimerRef.current = setTimeout(() => {
           setDropType("folder");
           hoverTimerRef.current = null;
@@ -167,9 +203,14 @@ function BookmarksView({ onMenuClick }) {
     } else {
       // Over something else or self
       setDropType("reorder");
+      setFolderProgress(0);
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = null;
+      }
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
       lastOverIdRef.current = currentOverId;
     }
@@ -179,10 +220,14 @@ function BookmarksView({ onMenuClick }) {
     async (event) => {
       const { active, over } = event;
 
-      // Clear timer
+      // Clear timers
       if (hoverTimerRef.current) {
         clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = null;
+      }
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
 
       if (!over || active.id === over.id) {
@@ -226,6 +271,10 @@ function BookmarksView({ onMenuClick }) {
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
     }
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
     resetDragState();
   }, []);
 
@@ -233,6 +282,7 @@ function BookmarksView({ onMenuClick }) {
     setActiveId(null);
     setOverId(null);
     setDropType(null);
+    setFolderProgress(0);
     lastOverIdRef.current = null;
   };
 
@@ -480,6 +530,7 @@ function BookmarksView({ onMenuClick }) {
                     bookmark={bookmark}
                     onEdit={handleEditBookmark}
                     isDropTarget={overId === bookmark.id && dropType === "folder"}
+                    folderProgress={overId === bookmark.id && dropType !== "folder" ? folderProgress : 0}
                   />
                 ))}
 
